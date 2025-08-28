@@ -42,105 +42,95 @@ export default function HomePage() {
   const [imageModalUrl, setImageModalUrl] = useState<string | null>(null);
 
   const [leagueStyle, setLeagueStyle] = useState<number>(0);
-
   const [bulkRunning, setBulkRunning] = useState(false);
   const [bulkProgress, setBulkProgress] = useState({ done: 0, total: 0 });
 
   const applyNFLPalette = useCallback(() => {
-    setTeams(prev =>
-      prev.map((t, i) => {
-        const p = NFL_PALETTE[i % NFL_PALETTE.length];
-        return { ...t, primary: p.primary, secondary: p.secondary };
-      })
-    );
+    setTeams(prev => prev.map((t, i) => {
+      const p = NFL_PALETTE[i % NFL_PALETTE.length];
+      return { ...t, primary: p.primary, secondary: p.secondary };
+    }));
   }, []);
+
   const remixPalette = useCallback(() => {
-    setTeams(prev =>
-      prev.map(t => {
-        const p = NFL_PALETTE[Math.floor(Math.random() * NFL_PALETTE.length)];
-        return { ...t, primary: p.primary, secondary: p.secondary };
-      })
-    );
+    setTeams(prev => prev.map(t => {
+      const p = NFL_PALETTE[Math.floor(Math.random() * NFL_PALETTE.length)];
+      return { ...t, primary: p.primary, secondary: p.secondary };
+    }));
   }, []);
 
   const applyLeagueStyleToAll = useCallback(() => {
     setTeams(prev => prev.map(t => ({ ...t, style: leagueStyle })));
   }, [leagueStyle]);
 
-  const handleLoadLeague = useCallback(
-    async (e: FormEvent) => {
-      e.preventDefault();
-      if (!leagueId.trim()) return;
-      setLoading(true);
-      try {
-        const res = await fetch('/api/league', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            provider,
-            leagueId: leagueId.trim(),
-            swid: espnSWID || undefined,
-            s2: espnS2 || undefined,
-          }),
-        });
-        if (!res.ok) throw new Error(`Failed: ${res.status}`);
-        const data = await res.json();
+  const handleLoadLeague = useCallback(async (e: FormEvent) => {
+    e.preventDefault();
+    if (!leagueId.trim()) return;
+    setLoading(true);
+    try {
+      const res = await fetch('/api/league', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          provider,
+          leagueId: leagueId.trim(),
+          swid: espnSWID || undefined,
+          s2: espnS2 || undefined,
+        }),
+      });
+      if (!res.ok) throw new Error(`Failed: ${res.status}`);
+      const data = await res.json();
 
-        // IMPORTANT: Always default mascot to the full team name (ignore any mascot returned)
-        const mapped: Team[] = (data.teams || []).map((t: any, idx: number) => {
-          const name = t.name || `Team ${idx + 1}`;
-          const base = NFL_PALETTE[idx % NFL_PALETTE.length];
-          return {
-            id: t.id?.toString() ?? `${idx + 1}`,
-            name,
-            owner: t.owner || '',
-            mascot: name, // <<—— default to team name every time we load
-            primary: t.primary || base.primary,
-            secondary: t.secondary || base.secondary,
-            seed: t.seed || Math.floor(Math.random() * 10_000) + 1,
-            style: leagueStyle,
-            logoUrl: '',
-          };
-        });
+      // Always set mascot = team name initially (logo uses Mascot only).
+      const mapped: Team[] = (data.teams || []).map((t: any, idx: number) => {
+        const name = t.name || `Team ${idx + 1}`;
+        const base = NFL_PALETTE[idx % NFL_PALETTE.length];
+        return {
+          id: t.id?.toString() ?? `${idx + 1}`,
+          name,
+          owner: t.owner || '',
+          mascot: name, // default to full team name
+          primary: t.primary || base.primary,
+          secondary: t.secondary || base.secondary,
+          seed: t.seed || Math.floor(Math.random() * 10_000) + 1,
+          style: leagueStyle,
+          logoUrl: '',
+        };
+      });
 
-        setTeams(mapped);
-        const params = new URLSearchParams({ provider, leagueId: leagueId.trim() });
-        if (typeof window !== 'undefined') window.history.replaceState(null, '', `?${params.toString()}`);
-      } catch (err) {
-        console.error(err);
-        alert('Could not load league. Double-check provider/ID (ESPN may require SWID/S2).');
-      } finally {
-        setLoading(false);
-      }
-    },
-    [provider, leagueId, espnSWID, espnS2, leagueStyle]
-  );
+      setTeams(mapped);
+      const params = new URLSearchParams({ provider, leagueId: leagueId.trim() });
+      if (typeof window !== 'undefined') window.history.replaceState(null, '', `?${params.toString()}`);
+    } catch (err) {
+      console.error(err);
+      alert('Could not load league. Double-check provider/ID (ESPN may require SWID/S2).');
+    } finally {
+      setLoading(false);
+    }
+  }, [provider, leagueId, espnSWID, espnS2, leagueStyle]);
 
   const updateTeam = useCallback((id: string, patch: Partial<Team>) => {
     setTeams(prev => prev.map(t => (t.id === id ? { ...t, ...patch } : t)));
   }, []);
 
-  const generateLogo = useCallback(
-    async (team: Team) => {
-      updateTeam(team.id, { generating: true });
-      try {
-        const res = await fetch('/api/generate-logo', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ team }),
-        });
-        if (!res.ok) throw new Error(`Gen failed: ${res.status}`);
-        const data = await res.json();
-        updateTeam(team.id, { logoUrl: data.url });
-      } catch (e) {
-        console.error(e);
-        alert(`Logo generation failed for ${team.name}. Try again.`);
-      } finally {
-        updateTeam(team.id, { generating: false });
-      }
-    },
-    [updateTeam]
-  );
+  const generateLogo = useCallback(async (team: Team) => {
+    updateTeam(team.id, { generating: true });
+    try {
+      const res = await fetch('/api/generate-logo', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ team }),
+      });
+      if (!res.ok) throw new Error(`Gen failed: ${res.status}`);
+      const data = await res.json();
+      updateTeam(team.id, { logoUrl: data.url });
+    } catch (e) {
+      console.error(e);
+      alert(`Logo generation failed for ${team.name}. Try again.`);
+    } finally {
+      updateTeam(team.id, { generating: false });
+    }
+  }, [updateTeam]);
 
   const generateAll = useCallback(async () => {
     if (!teams.length || bulkRunning) return;
