@@ -1,9 +1,7 @@
-// /lib/postprocess.ts
-// Client-side helpers: quantize to team palette, auto-crop, and vectorize to SVG (free).
-// Only import this module dynamically from the browser (no SSR).
+// Client-side post-processing: quantize to team palette, auto-crop, vectorize to SVG.
+// Runs in the browser only. Do not import on the server.
 
 type RGB = { r: number; g: number; b: number };
-
 const WHITE = { r: 255, g: 255, b: 255 };
 const BLACK = { r: 0, g: 0, b: 0 };
 
@@ -14,23 +12,18 @@ function hexToRgb(hex: string): RGB {
     : [h.slice(0,2), h.slice(2,4), h.slice(4,6)];
   return { r: parseInt(n[0],16), g: parseInt(n[1],16), b: parseInt(n[2],16) };
 }
-
 function dist2(a: RGB, b: RGB) {
   const dr = a.r - b.r, dg = a.g - b.g, db = a.b - b.b;
   return dr*dr + dg*dg + db*db;
 }
 
-// Map every pixel to the nearest of [primary, secondary, white, black]
 function quantizeToPalette(img: ImageData, primary: RGB, secondary: RGB): ImageData {
   const { data, width, height } = img;
   const out = new ImageData(width, height);
   const palette = [primary, secondary, WHITE, BLACK];
   for (let i = 0; i < data.length; i += 4) {
     const a = data[i + 3];
-    if (a < 10) { // transparent
-      out.data[i] = 0; out.data[i+1] = 0; out.data[i+2] = 0; out.data[i+3] = 0;
-      continue;
-    }
+    if (a < 10) { out.data[i]=0; out.data[i+1]=0; out.data[i+2]=0; out.data[i+3]=0; continue; }
     const px = { r: data[i], g: data[i+1], b: data[i+2] };
     let best = 0, bestd = Infinity;
     for (let p = 0; p < palette.length; p++) {
@@ -43,13 +36,11 @@ function quantizeToPalette(img: ImageData, primary: RGB, secondary: RGB): ImageD
   return out;
 }
 
-// Auto-crop to the bounding box of non-white pixels
 function autoCrop(img: ImageData): { cropped: ImageData; x: number; y: number } {
   const { data, width, height } = img;
   const isNonWhite = (idx: number) => {
     const r = data[idx], g = data[idx+1], b = data[idx+2], a = data[idx+3];
     if (a < 10) return false;
-    // treat very near white as background
     return !(r > 245 && g > 245 && b > 245);
   };
 
@@ -66,12 +57,8 @@ function autoCrop(img: ImageData): { cropped: ImageData; x: number; y: number } 
     }
   }
 
-  if (maxX < minX || maxY < minY) {
-    // nothing found; return original
-    return { cropped: img, x: 0, y: 0 };
-  }
+  if (maxX < minX || maxY < minY) return { cropped: img, x: 0, y: 0 };
 
-  // add a small padding
   const pad = Math.floor(Math.max(width, height) * 0.02);
   minX = Math.max(0, minX - pad);
   minY = Math.max(0, minY - pad);
@@ -104,11 +91,9 @@ async function imageDataToPngUrl(imageData: ImageData): Promise<string> {
 }
 
 async function vectorizeToSvgUrl(imageData: ImageData): Promise<string> {
-  // Lazy-load imagetracerjs (MIT) on the client
-  // @ts-ignore
+  // @ts-ignore - imagetracerjs UMD default
   const ImageTracer = (await import('imagetracerjs')).default || (await import('imagetracerjs'));
-  // Options tuned for flat fills (we quantized already)
-  const svgString = ImageTracer.imagedataToSVG(imageData, {
+  const svgString = (ImageTracer as any).imagedataToSVG(imageData, {
     numberofcolors: 4,
     pathomit: 1,
     blurradius: 0,
@@ -128,12 +113,10 @@ export async function postProcessLogo(
   primaryHex: string,
   secondaryHex: string
 ): Promise<{ pngUrl: string; svgUrl: string }> {
-  // Fetch as blob to avoid CORS-tainted canvas
   const resp = await fetch(remoteUrl, { cache: 'no-store' });
   const blob = await resp.blob();
   const bmp = await createImageBitmap(blob);
 
-  // Draw to canvas and read pixels
   const canvas = document.createElement('canvas');
   canvas.width = bmp.width;
   canvas.height = bmp.height;
@@ -141,7 +124,6 @@ export async function postProcessLogo(
   ctx.drawImage(bmp, 0, 0);
   const raw = ctx.getImageData(0, 0, canvas.width, canvas.height);
 
-  // Quantize → Crop → Export
   const q = quantizeToPalette(raw, hexToRgb(primaryHex), hexToRgb(secondaryHex));
   const { cropped } = autoCrop(q);
 
