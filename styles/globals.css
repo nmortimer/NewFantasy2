@@ -3,64 +3,83 @@
 @tailwind utilities;
 
 /* ---------- Design Tokens (dark theme) ---------- */
-:root {
-  --bg: #0b0f14;
-  --panel: #0f1520;
-  --card: #111927;
-  --border: #1f2a37;
-  --text: #e5eef8;
-  --muted: #9fb1c6;
-  --accent: #15a3ff;
-  --accent2: #7c5cff;
-  --shadow: 0 10px 30px rgba(0,0,0,0.35);
+:root{
+  --bg:#0a0f14;
+  --panel:#0f1520;
+  --card:#121a26;
+  --card-2:#0d1520;
+  --border:#1f2a37;
+  --text:#e7eef7;
+  --muted:#9db0c6;
+  --accent:#15a3ff;
+  --accent-500:#138fe0;
+  --accent2:#7c5cff;
+  --success:#10b981;
+  --danger:#ef4444;
+  --shadow:0 10px 30px rgba(0,0,0,.35);
 }
 
-/* ---------- Reusable classes ---------- */
-.btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: .5rem;
-  padding: .5rem .75rem;
-  font-size: .875rem;
-  font-weight: 600;
-  border-radius: .75rem;
-  border: 1px solid var(--border);
-  background: var(--card);
-  color: var(--text);
-  box-shadow: var(--shadow);
-  cursor: pointer;
-  transition: transform .05s ease, background .2s ease, border-color .2s ease, opacity .2s ease;
-}
-.btn:hover { transform: translateY(-1px); border-color: var(--accent); }
-.btn:disabled { opacity: .5; cursor: not-allowed; transform: none; }
-.btn-ghost { background: transparent; box-shadow: none; }
-.btn-primary { background: linear-gradient(180deg, var(--accent), #0f7bcc); border-color: #0f7bcc; color: white; }
-.btn-secondary { background: linear-gradient(180deg, var(--accent2), #5a3ae6); border-color: #5a3ae6; color: white; }
+html,body{background:var(--bg);color:var(--text)}
 
-.card {
-  background: var(--panel);
-  border: 1px solid var(--border);
-  border-radius: 1rem;
-  box-shadow: var(--shadow);
+/* ---------- Layout shells ---------- */
+.shell{
+  max-width:1200px;
+  margin-inline:auto;
+  padding-inline:1rem;
 }
 
-.panel {
-  background: var(--panel);
-  border: 1px solid var(--border);
-  border-radius: 1rem;
-  padding: 1rem;
-  box-shadow: var(--shadow);
+/* ---------- Buttons ---------- */
+.btn{
+  display:inline-flex;align-items:center;justify-content:center;gap:.5rem;
+  padding:.55rem .8rem;font-weight:700;font-size:.9rem;letter-spacing:.01em;
+  border-radius:.8rem;border:1px solid var(--border);background:var(--card);
+  color:var(--text);box-shadow:var(--shadow);transition:transform .05s ease,border-color .2s ease,opacity .2s ease;
+}
+.btn:hover{transform:translateY(-1px);border-color:var(--accent)}
+.btn:disabled{opacity:.55;cursor:not-allowed;transform:none}
+.btn-ghost{background:transparent;box-shadow:none}
+.btn-primary{background:linear-gradient(180deg,var(--accent),#0f79c8);border-color:#0f79c8;color:white}
+.btn-success{background:linear-gradient(180deg,var(--success),#0a9469);border-color:#0a9469;color:white}
+
+/* ---------- Cards / Panels ---------- */
+.card{
+  background:var(--card);border:1px solid var(--border);border-radius:1rem;box-shadow:var(--shadow)
+}
+.panel{
+  background:var(--panel);border:1px solid var(--border);border-radius:1rem;box-shadow:var(--shadow);padding:1rem
+}
+.badge{
+  display:inline-flex;align-items:center;gap:.35rem;border:1px solid rgba(21,163,255,.35);
+  color:var(--accent);background:rgba(21,163,255,.12);padding:.15rem .5rem;border-radius:.5rem;font-size:.7rem;font-weight:800
 }
 
-.badge {
-  display: inline-flex;
-  align-items: center;
-  padding: .15rem .5rem;
-  font-size: .7rem;
-  font-weight: 700;
-  color: var(--accent);
-  background: rgba(21, 163, 255, 0.12);
-  border: 1px solid rgba(21, 163, 255, 0.35);
-  border-radius: .5rem;
+/* ---------- Form bits ---------- */
+.input{
+  background:var(--card);border:1px solid var(--border);border-radius:.7rem;color:var(--text);
+  padding:.55rem .7rem;font-size:.9rem;outline:none
 }
+.input:focus{border-color:var(--accent)}
+
+/* Image frame ensures no layout shift & no overflow */
+.logo-frame{
+  aspect-ratio:1/1;border:1px solid var(--border);background:var(--card-2);
+  border-radius:1rem;overflow:hidden;display:flex;align-items:center;justify-content:center;
+}
+
+/* Compact icon buttons row */
+.iconbar{display:flex;gap:.5rem}
+.iconbtn{
+  height:36px;width:36px;border-radius:.7rem;border:1px solid var(--border);background:var(--card-2);
+  display:grid;place-items:center;transition:transform .05s ease,border-color .2s ease
+}
+.iconbtn:hover{transform:translateY(-1px);border-color:var(--accent)}
+
+/* Edit drawer */
+.drawer{
+  border-top:1px dashed var(--border);padding-top:.75rem;margin-top:.75rem
+}
+
+/* Scrollbar */
+*::-webkit-scrollbar{width:10px;height:10px}
+*::-webkit-scrollbar-thumb{background:#1f2a37;border-radius:8px;border:2px solid #0f1520}
+*::-webkit-scrollbar-track{background:#0f1520}
