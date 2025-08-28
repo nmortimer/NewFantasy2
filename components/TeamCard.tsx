@@ -34,7 +34,7 @@ export default function TeamCard({ team, onUpdate, onGenerate, onOpenImage }: Pr
     if (typeof navigator !== 'undefined' && 'share' in navigator) setCanShare(true);
   }, []);
 
-  // If mascot missing (older data), initialize to team name — but DO NOT overwrite once user edits.
+  // If mascot missing (older data), initialize to team name — do NOT overwrite once user edits.
   useEffect(() => {
     if (!team.mascot || !team.mascot.trim()) onUpdate({ mascot: team.name });
     // eslint-disable-next-line react-hooks/exhaustive-deps
