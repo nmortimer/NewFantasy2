@@ -9,7 +9,7 @@ export type Team = {
   mascot: string;
   primary: string;
   secondary: string;
-  seed: number;           // kept in data model, but shown to users as "Variation"
+  seed: number;           // kept in data model; users see "New Look" instead of a numeric control
   logoUrl?: string;
   generating?: boolean;
 };
@@ -21,8 +21,8 @@ type Props = {
   onOpenImage: () => void;
 };
 
-/** Guess a mascot from the full team name (used if user doesn't specify one) */
-function deriveMascotFromName(name: string): string {
+/** Fallback mascot guess; only used internally if team.mascot is empty */
+function guessMascot(name: string): string {
   const n = (name || '').toLowerCase();
   const map: Record<string, string> = {
     bears: 'bear', cubs: 'bear',
@@ -39,8 +39,6 @@ function deriveMascotFromName(name: string): string {
     dragons: 'dragon',
   };
   for (const k of Object.keys(map)) if (n.includes(k)) return map[k];
-  const fallbacks = ['wolf','bear','eagle','hawk','dragon','knight','viking','pirate','bull','tiger','panther','raven','shark','stallion','bison','ram','fox','gorilla'];
-  for (const f of fallbacks) if (n.includes(f)) return f;
   return 'wolf';
 }
 
@@ -49,13 +47,12 @@ export default function TeamCard({ team, onUpdate, onGenerate, onOpenImage }: Pr
   const [canShare, setCanShare] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
 
-  useEffect(() => {
-    if (typeof navigator !== 'undefined' && 'share' in navigator) setCanShare(true);
-  }, []);
+  useEffect(() => { if (typeof navigator !== 'undefined' && 'share' in navigator) setCanShare(true); }, []);
 
-  const suggestedMascot = useMemo(() => deriveMascotFromName(team.name), [team.name]);
+  // If mascot is blank, suggest one quietly (not shown as a button anymore)
+  const suggestedMascot = useMemo(() => team.mascot?.trim() || guessMascot(team.name), [team.mascot, team.name]);
 
-  const shuffleVariation = useCallback(() => {
+  const shuffleSeed = useCallback(() => {
     onUpdate({ seed: Math.floor(Math.random() * 10_000) + 1 });
   }, [onUpdate]);
 
@@ -85,16 +82,34 @@ export default function TeamCard({ team, onUpdate, onGenerate, onOpenImage }: Pr
     }
   }, [canShare, copyUrl, team.logoUrl, team.name]);
 
+  // Modal actions
+  const generateAndClose = useCallback(() => {
+    setEditOpen(false);
+    onGenerate();
+  }, [onGenerate]);
+
+  const newLook = useCallback(() => {
+    // Shuffle style then generate; close immediately so the grid never overflows
+    setEditOpen(false);
+    shuffleSeed();
+    onGenerate();
+  }, [shuffleSeed, onGenerate]);
+
+  // Ensure we never send empty mascot to the API
+  useEffect(() => {
+    if (!team.mascot || !team.mascot.trim()) {
+      onUpdate({ mascot: suggestedMascot });
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [suggestedMascot]);
+
   return (
     <>
       <div className="card p-4 flex flex-col">
-        {/* Header */}
-        <div className="flex items-start justify-between gap-3">
-          <div className="min-w-0">
-            <h3 className="text-sm font-semibold leading-tight break-words">{team.name}</h3>
-            <p className="text-[10px] text-[var(--muted)]">{team.owner || '—'}</p>
-          </div>
-          <span className="badge">#{team.id}</span>
+        {/* Header (code pill removed) */}
+        <div className="min-w-0">
+          <h3 className="text-sm font-semibold leading-tight break-words">{team.name}</h3>
+          <p className="text-[10px] text-[var(--muted)]">{team.owner || '—'}</p>
         </div>
 
         {/* Image */}
@@ -138,8 +153,8 @@ export default function TeamCard({ team, onUpdate, onGenerate, onOpenImage }: Pr
         </div>
       </div>
 
-      {/* EDIT MODAL (no card growth, no overflow) */}
-      <Modal isOpen={editOpen} onClose={() => setEditOpen(false)} title="Edit Logo Settings">
+      {/* EDIT MODAL (no overflow, closes on generate) */}
+      <Modal isOpen={editOpen} onClose={() => setEditOpen(false)} title="Edit Logo">
         <div className="grid gap-3">
           <label className="text-xs flex items-center gap-2">
             <span className="w-28 text-[var(--muted)]">Team Name</span>
@@ -151,46 +166,28 @@ export default function TeamCard({ team, onUpdate, onGenerate, onOpenImage }: Pr
             />
           </label>
 
-          <div className="grid grid-cols-1 sm:grid-cols-[1fr_auto] gap-2">
-            <label className="text-xs flex items-center gap-2">
-              <span className="w-28 text-[var(--muted)]">Mascot</span>
-              <input
-                value={team.mascot}
-                onChange={(e) => onUpdate({ mascot: e.target.value })}
-                className="input flex-1 text-xs"
-                placeholder="e.g., fox"
-              />
-            </label>
-            <button
-              type="button"
-              className="btn text-xs"
-              onClick={() => onUpdate({ mascot: suggestedMascot })}
-              title={`Use mascot from team name`}
-            >
-              Use “{suggestedMascot}”
-            </button>
-          </div>
+          <label className="text-xs flex items-center gap-2">
+            <span className="w-28 text-[var(--muted)]">Mascot</span>
+            <input
+              value={team.mascot}
+              onChange={(e) => onUpdate({ mascot: e.target.value })}
+              className="input flex-1 text-xs"
+              placeholder="e.g., fox"
+            />
+          </label>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <ColorPicker label="Primary" value={team.primary} onChange={(v) => onUpdate({ primary: v })} />
             <ColorPicker label="Secondary" value={team.secondary} onChange={(v) => onUpdate({ secondary: v })} />
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-[auto_auto_1fr] gap-2 items-center">
-            <label className="text-xs flex items-center gap-2">
-              <span className="w-28 text-[var(--muted)]">Variation</span>
-              <input
-                type="number"
-                value={team.seed}
-                onChange={(e) => onUpdate({ seed: parseInt(e.target.value || '0', 10) || 1 })}
-                className="input w-28 text-xs"
-                min={1}
-              />
-            </label>
-            <button className="btn text-xs" onClick={shuffleVariation}>Shuffle</button>
-            <div className="sm:text-right">
-              <button className="btn btn-primary text-xs" onClick={onGenerate} disabled={!!team.generating}>
-                {team.generating ? 'Generating…' : 'Generate from these settings'}
+          {/* Style controls: no number field, just actions */}
+          <div className="mt-2 flex flex-col sm:flex-row gap-2 sm:items-center sm:justify-between">
+            <span className="text-xs text-[var(--muted)]">Style</span>
+            <div className="flex gap-2 sm:ml-auto">
+              <button className="btn" onClick={newLook} disabled={!!team.generating}>New Look</button>
+              <button className="btn btn-primary" onClick={generateAndClose} disabled={!!team.generating}>
+                {team.generating ? 'Generating…' : 'Generate'}
               </button>
             </div>
           </div>
