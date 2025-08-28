@@ -75,9 +75,9 @@ function deriveMascotFromName(name: string): string {
 const STYLE_VARIANTS = [
   'modern NFL style, sharp angular geometry, bold negative space',
   'sleek geometric vector, minimal clean shapes, balanced proportions',
-  'front-facing symmetrical emblem, thick outline, strong contrast',
+  'front-facing symmetrical emblem, thick black outline, strong contrast',
   '3/4 view dynamic head, aggressive expression, crisp edges',
-  'retro-inspired simplified mark, solid fills, subtle inner shadow',
+  'retro simplified mark, flat blocks, limited detail, solid fills',
   'rounded friendly geometry, smooth curves, high clarity',
 ];
 
@@ -104,14 +104,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       : variationSeed % STYLE_VARIANTS.length;
     const style = STYLE_VARIANTS[styleIdx];
 
+    // Strong palette enforcement and professional constraints
     const paletteList = `${primaryName} (${primaryRaw}), ${secondaryName} (${secondaryRaw}), white, black`;
-    const paletteStrict = `color palette strictly limited to: ${paletteList}. dominant color: ${primaryName} (${primaryRaw}); accent: ${secondaryName} (${secondaryRaw}). absolutely no other colors.`;
-    const negatives = 'no text, no letters, no typography, no wordmark, no numbers, no jersey, no banners, no slogans, no watermark, no signature';
+    const paletteStrict = `color palette strictly limited to: ${paletteList}; dominant color: ${primaryName} (${primaryRaw}); accent: ${secondaryName} (${secondaryRaw}); absolutely no other colors, no gradients.`;
+
+    const negatives = 'no text, no letters, no typography, no wordmark, no numbers, no jersey, no banners, no ribbons, no slogans, no watermark, no signature, no background scene';
 
     const prompt =
       `professional sports team mascot logo — ${style}; ` +
-      `vector emblem of a ${mascot} head, centered, high contrast, crisp edges, thick outline, clean background, export-quality; ` +
-      `${paletteStrict}; ${negatives}`;
+      `flat vector mark, solid fills, ${paletteStrict} ` +
+      `head-only ${mascot} emblem, centered, clean silhouette, crisp edges, high contrast, thick black outline, plain white background, export-quality; ` +
+      `${negatives}`;
 
     const encoded = encodeURIComponent(prompt);
     const url = `https://image.pollinations.ai/prompt/${encoded}?seed=${variationSeed}&width=1024&height=1024`;
