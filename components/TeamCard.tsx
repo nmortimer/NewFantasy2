@@ -25,7 +25,9 @@ export default function TeamCard({ team, onUpdate, onGenerate, onOpenImage }: Pr
   const [canShare, setCanShare] = useState(false);
   const [open, setOpen] = useState(false); // edit drawer
 
-  useEffect(() => { if (typeof navigator !== 'undefined' && 'share' in navigator) setCanShare(true); }, []);
+  useEffect(() => {
+    if (typeof navigator !== 'undefined' && 'share' in navigator) setCanShare(true);
+  }, []);
 
   const newSeed = useCallback(() => onUpdate({ seed: Math.floor(Math.random()*10_000)+1 }), [onUpdate]);
 
