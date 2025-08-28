@@ -3,27 +3,26 @@ import React from 'react';
 type Props = {
   label: string;
   value: string;
-  onChange: (v: string) => void;
+  onChange: (hex: string) => void;
 };
 
 export default function ColorPicker({ label, value, onChange }: Props) {
   return (
-    <label className="flex items-center gap-2 text-xs">
-      <span className="w-16 text-[var(--muted)]">{label}</span>
+    <div className="flex items-center gap-2">
+      <span className="w-24 text-xs text-[var(--muted)]">{label}</span>
       <input
         type="color"
+        className="h-8 w-10 rounded border border-[var(--border)] bg-[var(--card-2)]"
         value={value}
-        onChange={(e) => onChange(e.target.value)}
-        className="h-8 w-10 rounded-md border border-[var(--border)] bg-[var(--card)]"
-        aria-label={label}
+        onChange={e => onChange(e.target.value)}
+        aria-label={`${label} color`}
       />
       <input
-        type="text"
+        className="input flex-1 text-xs"
         value={value}
-        onChange={(e) => onChange(e.target.value)}
-        className="flex-1 rounded-md bg-[var(--card)] border border-[var(--border)] px-2 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-[var(--accent)]"
-        placeholder="#000000"
+        onChange={e => onChange(e.target.value)}
+        placeholder="#RRGGBB"
       />
-    </label>
+    </div>
   );
 }
