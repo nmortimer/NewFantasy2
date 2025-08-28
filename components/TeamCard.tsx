@@ -109,7 +109,22 @@ export default function TeamCard({ team, onUpdate, onGenerate, onOpenImage }: Pr
         <div className="mt-3 aspect-square border border-[var(--border)] bg-[var(--card-2)] rounded-xl overflow-hidden">
           {team.logoUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={team.logoUrl} alt={`${team.name} logo`} className="h-full w-full object-cover" />
+            <img
+              src={team.logoUrl}
+              alt={`${team.name} logo`}
+              className="h-full w-full object-cover"
+              onError={(e) => {
+                // one retry with a cache-buster
+                const el = e.currentTarget;
+                try {
+                  const url = new URL(el.src);
+                  if (!url.searchParams.get('cb')) {
+                    url.searchParams.set('cb', Math.random().toString(36).slice(2));
+                    el.src = url.toString();
+                  }
+                } catch { /* ignore malformed */ }
+              }}
+            />
           ) : (
             <div className="h-full w-full grid place-items-center text-xs text-[var(--muted)] px-3">
               No logo yet — generate to preview
