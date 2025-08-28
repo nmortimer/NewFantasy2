@@ -7,11 +7,11 @@ export type Team = {
   id: string;
   name: string;
   owner: string;
-  mascot: string;        // defaults to team name; user can simplify (e.g., “shark”)
+  mascot: string;        // defaults to team name; user may edit (prompt uses THIS)
   primary: string;
   secondary: string;
-  seed: number;          // variation handle
-  style?: number;        // 0..5 -> Style Flavor knob
+  seed: number;
+  style?: number;        // 0..5
   logoUrl?: string;
   generating?: boolean;
 };
@@ -34,7 +34,7 @@ export default function TeamCard({ team, onUpdate, onGenerate, onOpenImage }: Pr
     if (typeof navigator !== 'undefined' && 'share' in navigator) setCanShare(true);
   }, []);
 
-  // If mascot missing (older data), initialize to team name
+  // If mascot missing (older data), initialize to team name — but DO NOT overwrite once user edits.
   useEffect(() => {
     if (!team.mascot || !team.mascot.trim()) onUpdate({ mascot: team.name });
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -66,37 +66,25 @@ export default function TeamCard({ team, onUpdate, onGenerate, onOpenImage }: Pr
   const share = useCallback(async () => {
     if (!team.logoUrl) return;
     if (canShare) {
-      try {
-        await (navigator as any).share({ title: team.name, url: team.logoUrl });
-      } catch {}
+      try { await (navigator as any).share({ title: team.name, url: team.logoUrl }); } catch {}
     } else {
       await copyUrl();
     }
   }, [canShare, copyUrl, team.logoUrl, team.name]);
 
-  const generateAndClose = useCallback(() => {
-    setEditOpen(false);
-    onGenerate();
-  }, [onGenerate]);
-
-  const newLook = useCallback(() => {
-    setEditOpen(false);
-    shuffleSeed();
-    onGenerate();
-  }, [shuffleSeed, onGenerate]);
+  const generateAndClose = useCallback(() => { setEditOpen(false); onGenerate(); }, [onGenerate]);
+  const newLook = useCallback(() => { setEditOpen(false); shuffleSeed(); onGenerate(); }, [shuffleSeed, onGenerate]);
 
   const styleIdx = team.style ?? 0;
 
   return (
     <>
       <div className="card p-4 flex flex-col">
-        {/* Header */}
         <div className="min-w-0">
           <h3 className="text-sm font-semibold leading-tight break-words">{team.name}</h3>
           <p className="text-[10px] text-[var(--muted)]">{team.owner || '—'}</p>
         </div>
 
-        {/* Image */}
         <div className="mt-3 aspect-square border border-[var(--border)] bg-[var(--card-2)] rounded-xl overflow-hidden">
           {team.logoUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
@@ -105,7 +93,6 @@ export default function TeamCard({ team, onUpdate, onGenerate, onOpenImage }: Pr
               alt={`${team.name} logo`}
               className="h-full w-full object-cover"
               onError={e => {
-                // one retry with a cache-buster
                 const el = e.currentTarget;
                 try {
                   const url = new URL(el.src);
@@ -113,9 +100,7 @@ export default function TeamCard({ team, onUpdate, onGenerate, onOpenImage }: Pr
                     url.searchParams.set('cb', Math.random().toString(36).slice(2));
                     el.src = url.toString();
                   }
-                } catch {
-                  /* ignore */
-                }
+                } catch {}
               }}
             />
           ) : (
@@ -125,30 +110,21 @@ export default function TeamCard({ team, onUpdate, onGenerate, onOpenImage }: Pr
           )}
         </div>
 
-        {/* Primary actions */}
         <div className="mt-3 grid grid-cols-2 gap-2">
           <button className="btn btn-primary h-10" onClick={onGenerate} disabled={!!team.generating}>
             {team.generating ? 'Generating…' : 'Generate Logo'}
           </button>
-          <button className="btn h-10" onClick={() => setEditOpen(true)}>
-            Edit
-          </button>
+          <button className="btn h-10" onClick={() => setEditOpen(true)}>Edit</button>
         </div>
 
-        {/* Secondary actions */}
         <div className="mt-2 grid grid-cols-3 gap-2">
-          <button className="btn h-9" onClick={onOpenImage} disabled={!team.logoUrl}>
-            Open
-          </button>
-          <button className="btn h-9" onClick={download} disabled={!team.logoUrl}>
-            Download
-          </button>
+          <button className="btn h-9" onClick={onOpenImage} disabled={!team.logoUrl}>Open</button>
+          <button className="btn h-9" onClick={download} disabled={!team.logoUrl}>Download</button>
           <button className="btn h-9" onClick={share} disabled={!team.logoUrl}>
             {canShare ? 'Share' : copyState === 'copied' ? 'Copied!' : 'Copy URL'}
           </button>
         </div>
 
-        {/* Color strip + URL */}
         <div className="mt-2 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <div className="h-5 w-5 rounded" style={{ background: team.primary }} />
@@ -160,19 +136,21 @@ export default function TeamCard({ team, onUpdate, onGenerate, onOpenImage }: Pr
         </div>
       </div>
 
-      {/* EDIT MODAL */}
       <Modal isOpen={editOpen} onClose={() => setEditOpen(false)} title="Edit Logo">
         <div className="grid gap-4">
+          {/* Team name is informational only (read-only) */}
           <label className="text-xs flex items-center gap-2">
             <span className="w-28 text-[var(--muted)]">Team Name</span>
             <input
               value={team.name}
-              onChange={e => onUpdate({ name: e.target.value })}
-              className="input flex-1 text-xs"
-              placeholder="e.g., Swedish Arctic Foxes"
+              readOnly
+              disabled
+              className="input flex-1 text-xs opacity-80 cursor-not-allowed"
+              placeholder="Team name"
             />
           </label>
 
+          {/* Mascot drives the prompt and is editable */}
           <label className="text-xs flex items-center gap-2">
             <span className="w-28 text-[var(--muted)]">Mascot</span>
             <input
@@ -188,7 +166,6 @@ export default function TeamCard({ team, onUpdate, onGenerate, onOpenImage }: Pr
             <ColorPicker label="Secondary" value={team.secondary} onChange={v => onUpdate({ secondary: v })} />
           </div>
 
-          {/* Style Flavor knob (true rotary) */}
           <div className="grid sm:grid-cols-[auto_1fr] gap-3 sm:items-center">
             <div className="text-xs">
               <div className="text-[var(--muted)]">Style Flavor</div>
@@ -198,21 +175,16 @@ export default function TeamCard({ team, onUpdate, onGenerate, onOpenImage }: Pr
               <RotaryKnob value={styleIdx} onChange={v => onUpdate({ style: v })} size={72} ariaLabel="Team style flavor" />
               <div className="grid grid-cols-3 gap-x-4 gap-y-1 text-[10px] text-[var(--muted)]">
                 {STYLE_LABELS.map((l, i) => (
-                  <div key={l} className={`${i === styleIdx ? 'text-[var(--text)] font-semibold' : ''}`}>
-                    {l}
-                  </div>
+                  <div key={l} className={`${i === styleIdx ? 'text-[var(--text)] font-semibold' : ''}`}>{l}</div>
                 ))}
               </div>
             </div>
           </div>
 
-          {/* Actions */}
           <div className="mt-2 flex flex-col sm:flex-row gap-2 sm:items-center sm:justify-between">
             <span className="text-xs text-[var(--muted)]">Tip: “New Look” shuffles details within the chosen style.</span>
             <div className="flex gap-2 sm:ml-auto">
-              <button className="btn" onClick={newLook} disabled={!!team.generating}>
-                New Look
-              </button>
+              <button className="btn" onClick={newLook} disabled={!!team.generating}>New Look</button>
               <button className="btn btn-primary" onClick={generateAndClose} disabled={!!team.generating}>
                 {team.generating ? 'Generating…' : 'Generate'}
               </button>
