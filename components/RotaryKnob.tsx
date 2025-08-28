@@ -1,12 +1,11 @@
 import React, { useCallback, useMemo, useRef, useState } from 'react';
 
 /**
- * RotaryKnob — a discrete rotary control with 6 stops (0..5).
- * - Click/drag or use arrow keys.
- * - Angle range: -135°..+135° (270° sweep).
+ * RotaryKnob — a discrete rotary control with N stops (default 6, 0..5).
+ * Click/drag or use arrow keys. 270° sweep (-135°..+135°).
  */
 type Props = {
-  value: number;                // 0..5
+  value: number;                // current stop index (0..stops-1)
   onChange: (v: number) => void;
   size?: number;                // px, default 72
   stops?: number;               // default 6
@@ -38,14 +37,12 @@ export default function RotaryKnob({
       const dx = clientX - cx;
       const dy = clientY - cy;
       let angle = (Math.atan2(dy, dx) * 180) / Math.PI; // -180..180
-      // clamp to sweep
       let clamped = angle;
-      // map [-180..180] into [-135..135] sector
       if (angle < startDeg) clamped = startDeg;
       if (angle > endDeg) clamped = endDeg;
       return clamped;
     },
-    [startDeg, endDeg]
+    []
   );
 
   const setFromEvent = useCallback(
@@ -56,7 +53,7 @@ export default function RotaryKnob({
       const v = Math.round(t * (stops - 1));
       onChange(clamp(v, 0, stops - 1));
     },
-    [onChange, span, startDeg, stops, toAngle]
+    [onChange, span, stops]
   );
 
   const onPointerDown = useCallback(
@@ -78,7 +75,10 @@ export default function RotaryKnob({
 
   const onPointerUp = useCallback(() => setDragging(false), []);
 
-  const angle = useMemo(() => startDeg + (span * clamp(value, 0, stops - 1)) / (stops - 1), [value, span, startDeg, stops]);
+  const angle = useMemo(
+    () => startDeg + (span * clamp(value, 0, stops - 1)) / (stops - 1),
+    [value, span, stops]
+  );
 
   const tickEls = useMemo(() => {
     const arr = [];
@@ -97,7 +97,7 @@ export default function RotaryKnob({
       );
     }
     return arr;
-  }, [stops, startDeg, span, size, value]);
+  }, [stops, size, value, span]);
 
   return (
     <div
@@ -126,7 +126,6 @@ export default function RotaryKnob({
           'inset 0 6px 16px rgba(0,0,0,0.45), inset 0 -4px 10px rgba(255,255,255,0.05), 0 2px 6px rgba(0,0,0,0.6)',
       }}
     >
-      {/* ticks */}
       {tickEls}
 
       {/* center cap */}
