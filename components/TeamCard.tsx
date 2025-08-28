@@ -12,7 +12,9 @@ export type Team = {
   secondary: string;
   seed: number;
   style?: number;        // 0..5
-  logoUrl?: string;
+  logoUrl?: string;      // processed PNG (preview/download)
+  svgUrl?: string;       // processed SVG
+  rawUrl?: string;       // original Pollinations image
   generating?: boolean;
 };
 
@@ -34,25 +36,26 @@ export default function TeamCard({ team, onUpdate, onGenerate, onOpenImage }: Pr
     if (typeof navigator !== 'undefined' && 'share' in navigator) setCanShare(true);
   }, []);
 
-  // If mascot missing (older data), initialize to team name — do NOT overwrite once user edits.
   useEffect(() => {
     if (!team.mascot || !team.mascot.trim()) onUpdate({ mascot: team.name });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [team.name]);
 
-  const shuffleSeed = useCallback(() => {
-    onUpdate({ seed: Math.floor(Math.random() * 10_000) + 1 });
-  }, [onUpdate]);
-
-  const download = useCallback(async () => {
+  const downloadPng = useCallback(() => {
     if (!team.logoUrl) return;
     const a = document.createElement('a');
     a.href = team.logoUrl;
-    a.download = `${team.name.replace(/\s+/g, '_')}_logo.png`;
-    document.body.appendChild(a);
+    a.download = `${team.name.replace(/\s+/g, '_')}.png`;
     a.click();
-    a.remove();
   }, [team.logoUrl, team.name]);
+
+  const downloadSvg = useCallback(() => {
+    if (!team.svgUrl) return;
+    const a = document.createElement('a');
+    a.href = team.svgUrl!;
+    a.download = `${team.name.replace(/\s+/g, '_')}.svg`;
+    a.click();
+  }, [team.svgUrl, team.name]);
 
   const copyUrl = useCallback(async () => {
     if (!team.logoUrl) return;
@@ -73,7 +76,11 @@ export default function TeamCard({ team, onUpdate, onGenerate, onOpenImage }: Pr
   }, [canShare, copyUrl, team.logoUrl, team.name]);
 
   const generateAndClose = useCallback(() => { setEditOpen(false); onGenerate(); }, [onGenerate]);
-  const newLook = useCallback(() => { setEditOpen(false); shuffleSeed(); onGenerate(); }, [shuffleSeed, onGenerate]);
+  const newLook = useCallback(() => {
+    onUpdate({ seed: Math.floor(Math.random() * 10_000) + 1 });
+    setEditOpen(false);
+    onGenerate();
+  }, [onGenerate, onUpdate]);
 
   const styleIdx = team.style ?? 0;
 
@@ -91,17 +98,7 @@ export default function TeamCard({ team, onUpdate, onGenerate, onOpenImage }: Pr
             <img
               src={team.logoUrl}
               alt={`${team.name} logo`}
-              className="h-full w-full object-cover"
-              onError={e => {
-                const el = e.currentTarget;
-                try {
-                  const url = new URL(el.src);
-                  if (!url.searchParams.get('cb')) {
-                    url.searchParams.set('cb', Math.random().toString(36).slice(2));
-                    el.src = url.toString();
-                  }
-                } catch {}
-              }}
+              className="h-full w-full object-contain"
             />
           ) : (
             <div className="h-full w-full grid place-items-center text-xs text-[var(--muted)] px-3">
@@ -117,9 +114,10 @@ export default function TeamCard({ team, onUpdate, onGenerate, onOpenImage }: Pr
           <button className="btn h-10" onClick={() => setEditOpen(true)}>Edit</button>
         </div>
 
-        <div className="mt-2 grid grid-cols-3 gap-2">
+        <div className="mt-2 grid grid-cols-4 gap-2">
           <button className="btn h-9" onClick={onOpenImage} disabled={!team.logoUrl}>Open</button>
-          <button className="btn h-9" onClick={download} disabled={!team.logoUrl}>Download</button>
+          <button className="btn h-9" onClick={downloadPng} disabled={!team.logoUrl}>PNG</button>
+          <button className="btn h-9" onClick={downloadSvg} disabled={!team.svgUrl}>SVG</button>
           <button className="btn h-9" onClick={share} disabled={!team.logoUrl}>
             {canShare ? 'Share' : copyState === 'copied' ? 'Copied!' : 'Copy URL'}
           </button>
@@ -131,7 +129,7 @@ export default function TeamCard({ team, onUpdate, onGenerate, onOpenImage }: Pr
             <div className="h-5 w-5 rounded border border-[var(--border)]" style={{ background: team.secondary }} />
           </div>
           <span className="text-[10px] text-[var(--muted)] truncate max-w-[60%]">
-            {team.logoUrl ? team.logoUrl : 'No image yet'}
+            {team.rawUrl ? team.rawUrl : 'No image yet'}
           </span>
         </div>
       </div>
