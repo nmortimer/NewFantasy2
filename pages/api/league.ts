@@ -36,7 +36,6 @@ async function fetchSleeper(leagueId: string) {
   const league = await leagueRes.json();
   const users = await usersRes.json();
 
-  // Sleeper team name is often under user.metadata.team_name; fallback to display_name
   const teams = (users as any[]).map((u, idx) => {
     const name = u?.metadata?.team_name || u?.display_name || `Team ${idx + 1}`;
     return {
