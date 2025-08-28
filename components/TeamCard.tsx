@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import Modal from './Modal';
 import ColorPicker from './ColorPicker';
+import RotaryKnob from './RotaryKnob';
 
 export type Team = {
   id: string;
@@ -173,26 +174,19 @@ export default function TeamCard({ team, onUpdate, onGenerate, onOpenImage }: Pr
             <ColorPicker label="Secondary" value={team.secondary} onChange={(v) => onUpdate({ secondary: v })} />
           </div>
 
-          {/* Style Flavor knob */}
-          <div className="grid gap-2">
-            <div className="flex items-center justify-between">
-              <span className="text-xs text-[var(--muted)]">Style Flavor</span>
-              <span className="text-xs font-semibold">{STYLE_LABELS[styleIdx]}</span>
+          {/* Style Flavor knob (true rotary) */}
+          <div className="grid sm:grid-cols-[auto_1fr] gap-3 sm:items-center">
+            <div className="text-xs">
+              <div className="text-[var(--muted)]">Style Flavor</div>
+              <div className="font-semibold">{STYLE_LABELS[styleIdx]}</div>
             </div>
-            <input
-              type="range"
-              min={0}
-              max={5}
-              step={1}
-              value={styleIdx}
-              onChange={(e) => onUpdate({ style: parseInt(e.target.value, 10) })}
-              className="w-full accent-[var(--accent)]"
-              aria-label="Style Flavor"
-            />
-            <div className="grid grid-cols-6 text-[10px] text-[var(--muted)]">
-              {STYLE_LABELS.map((l, i) => (
-                <div key={l} className={`text-center ${i === styleIdx ? 'text-[var(--text)] font-semibold' : ''}`}>{l}</div>
-              ))}
+            <div className="flex items-center gap-4">
+              <RotaryKnob value={styleIdx} onChange={(v)=>onUpdate({ style: v })} size={72} ariaLabel="Team style flavor" />
+              <div className="grid grid-cols-3 gap-x-4 gap-y-1 text-[10px] text-[var(--muted)]">
+                {STYLE_LABELS.map((l, i) => (
+                  <div key={l} className={`${i === styleIdx ? 'text-[var(--text)] font-semibold' : ''}`}>{l}</div>
+                ))}
+              </div>
             </div>
           </div>
 
