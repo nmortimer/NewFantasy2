@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import ColorPicker from './ColorPicker';
 
 export type Team = {
@@ -22,6 +22,14 @@ type Props = {
 
 export default function TeamCard({ team, onUpdate, onGenerate, onOpenImage }: Props) {
   const [copyState, setCopyState] = useState<'idle' | 'copied'>('idle');
+  const [canShare, setCanShare] = useState(false);
+
+  // Detect Web Share API on client only to avoid SSR issues
+  useEffect(() => {
+    if (typeof navigator !== 'undefined' && 'share' in navigator) {
+      setCanShare(true);
+    }
+  }, []);
 
   const newSeed = useCallback(() => {
     onUpdate({ seed: Math.floor(Math.random() * 10_000) + 1 });
@@ -29,7 +37,6 @@ export default function TeamCard({ team, onUpdate, onGenerate, onOpenImage }: Pr
 
   const download = useCallback(async () => {
     if (!team.logoUrl) return;
-    // Try simple anchor download first
     const a = document.createElement('a');
     a.href = team.logoUrl;
     a.download = `${team.name.replace(/\s+/g, '_')}_logo.png`;
@@ -45,22 +52,22 @@ export default function TeamCard({ team, onUpdate, onGenerate, onOpenImage }: Pr
       setCopyState('copied');
       setTimeout(() => setCopyState('idle'), 1200);
     } catch {
-      // no-op
+      // ignore
     }
   }, [team.logoUrl]);
 
   const share = useCallback(async () => {
     if (!team.logoUrl) return;
-    if (navigator.share) {
+    if (canShare) {
       try {
-        await navigator.share({ title: team.name, url: team.logoUrl });
+        await (navigator as any).share({ title: team.name, url: team.logoUrl });
       } catch {
-        // ignore cancel
+        // user canceled share; ignore
       }
     } else {
       await copyUrl();
     }
-  }, [copyUrl, team.logoUrl, team.name]);
+  }, [canShare, copyUrl, team.logoUrl, team.name]);
 
   return (
     <div className="card overflow-hidden">
@@ -128,7 +135,7 @@ export default function TeamCard({ team, onUpdate, onGenerate, onOpenImage }: Pr
               {team.generating ? 'Generating…' : 'Generate'}
             </button>
             <button className="btn" onClick={share} disabled={!team.logoUrl}>
-              {navigator.share ? 'Share' : (copyState === 'copied' ? 'Copied!' : 'Copy URL')}
+              {canShare ? 'Share' : (copyState === 'copied' ? 'Copied!' : 'Copy URL')}
             </button>
           </div>
         </div>
