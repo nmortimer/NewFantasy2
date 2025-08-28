@@ -4,7 +4,7 @@ type Team = {
   id: string;
   name: string;
   owner: string;
-  mascot: string;      // optional in practice; we’ll derive if empty
+  mascot: string;      // may be empty; we'll derive if needed
   primary: string;
   secondary: string;
   seed: number;
@@ -19,7 +19,6 @@ const sanitizeColor = (c: string) => {
   return '#ffffff';
 };
 
-// Derive mascot from the full team name if the explicit mascot is missing
 function deriveMascotFromName(name: string): string {
   const n = (name || '').toLowerCase();
   const map: Record<string, string> = {
@@ -34,7 +33,7 @@ function deriveMascotFromName(name: string): string {
     bulls: 'bull', bison: 'bison', buffaloes: 'bison',
     vikings: 'viking', knights: 'knight', pirates: 'pirate', buccaneers: 'pirate',
     rams: 'ram', foxes: 'fox', gorillas: 'gorilla', gators: 'alligator', crocodiles: 'crocodile',
-    dragons: 'dragon'
+    dragons: 'dragon',
   };
   for (const k of Object.keys(map)) if (n.includes(k)) return map[k];
   const fallback = ['wolf','bear','eagle','hawk','dragon','knight','viking','pirate','bull','tiger','panther','raven','shark','stallion','bison','ram','fox','gorilla'];
@@ -48,19 +47,19 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       res.setHeader('Allow', 'POST');
       return res.status(405).json({ error: 'Method not allowed' });
     }
+
     const { team } = req.body as { team: Team };
     if (!team) return res.status(400).json({ error: 'Missing team' });
 
     const primary = sanitizeColor(team.primary);
     const secondary = sanitizeColor(team.secondary);
 
-    // If the user typed a mascot, honor it; otherwise derive from the full team name
-    const mascot = (team.mascot && team.mascot.trim().length > 0)
+    const mascot = (team.mascot && team.mascot.trim())
       ? team.mascot.trim().toLowerCase()
       : deriveMascotFromName(team.name);
 
-    // Prompt explicitly forbids text/words/numbers and locks the palette
-    const prompt = `professional american football team logo, mascot head emblem: ${mascot}, color palette ONLY: ${primary}, ${secondary}, white, vector, bold, high contrast, symmetrical, centered, no text, no words, no typography, no banners, no numbers, no watermark`;
+    // Use the full team name as inspiration while strictly forbidding any text in the image
+    const prompt = `professional american football team logo, mascot head emblem: ${mascot}, inspired by team name: ${team.name}, color palette ONLY: ${primary}, ${secondary}, white, vector, bold, high contrast, symmetrical, centered, no text, no words, no typography, no banners, no numbers, no watermark`;
 
     const encoded = encodeURIComponent(prompt);
     const seed = team.seed ?? Math.floor(Math.random() * 10000) + 1;
