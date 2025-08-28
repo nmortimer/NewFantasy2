@@ -1,6 +1,7 @@
 import { FormEvent, useCallback, useState } from 'react';
 import TeamCard, { Team } from '../components/TeamCard';
 import Modal from '../components/Modal';
+import RotaryKnob from '../components/RotaryKnob';
 
 type Provider = 'sleeper' | 'mfl' | 'espn';
 
@@ -45,27 +46,6 @@ function deriveMascot(name: string): string {
   return FALLBACK_MASCOTS[Math.floor(Math.random()*FALLBACK_MASCOTS.length)];
 }
 
-/** ---------- Demo/Sample Gallery ---------- **/
-type Sample = { mascot: string; primary: string; secondary: string; seed: number; name: string };
-const SAMPLES: Sample[] = [
-  { mascot:'wolf',     primary:'#00338D', secondary:'#C60C30', seed:7123, name:'Blue Wolves' },
-  { mascot:'eagle',    primary:'#203731', secondary:'#FFB612', seed:8142, name:'Verdant Eagles' },
-  { mascot:'tiger',    primary:'#0B162A', secondary:'#C83803', seed:5177, name:'Night Tigers' },
-  { mascot:'stallion', primary:'#0A2342', secondary:'#FB4F14', seed:4409, name:'Mile High' },
-  { mascot:'raven',    primary:'#241773', secondary:'#000000', seed:1903, name:'Ravencrest' },
-  { mascot:'panther',  primary:'#0085CA', secondary:'#101820', seed:6611, name:'Carolina' },
-  { mascot:'jaguar',   primary:'#006778', secondary:'#9F792C', seed:3302, name:'Teal Fangs' },
-  { mascot:'shark',    primary:'#002244', secondary:'#69BE28', seed:9281, name:'Sound Sharks' },
-  { mascot:'knight',   primary:'#4F2683', secondary:'#FFC62F', seed:2845, name:'Violet Knights' },
-  { mascot:'bear',     primary:'#AA0000', secondary:'#B3995D', seed:1199, name:'Gold Bears' },
-  { mascot:'viking',   primary:'#4F2683', secondary:'#FFC62F', seed:4040, name:'Nordic' },
-  { mascot:'bison',    primary:'#125740', secondary:'#FFFFFF', seed:9555, name:'Prairie Bison' },
-];
-function sampleUrl(s: Sample) {
-  const prompt = `professional sports team mascot logo — vector emblem of a ${s.mascot} head, centered, high contrast, thick outline; color palette strictly limited to: ${s.primary}, ${s.secondary}, white, black; no text, no letters, no numbers, no banners, no watermark`;
-  return `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}?seed=${s.seed}&width=640&height=640`;
-}
-
 export default function HomePage(){
   const [provider, setProvider] = useState<Provider>('sleeper');
   const [leagueId, setLeagueId] = useState('');
@@ -74,9 +54,8 @@ export default function HomePage(){
   const [teams, setTeams] = useState<Team[]>([]);
   const [loading, setLoading] = useState(false);
   const [imageModalUrl, setImageModalUrl] = useState<string|null>(null);
-  const [samplePreviewUrl, setSamplePreviewUrl] = useState<string|null>(null);
 
-  // NEW: league-wide style knob (applies to initial mapping + can re-apply later)
+  // League-wide style knob
   const [leagueStyle, setLeagueStyle] = useState<number>(0);
 
   const applyNFLPalette = useCallback(()=> {
@@ -116,7 +95,7 @@ export default function HomePage(){
           primary: t.primary || base.primary,
           secondary: t.secondary || base.secondary,
           seed: t.seed || Math.floor(Math.random()*10_000)+1,
-          style: leagueStyle,       // <- seed teams with the chosen league style
+          style: leagueStyle,       // apply selected league style
           logoUrl: t.logoUrl || ''
         };
       });
@@ -153,26 +132,9 @@ export default function HomePage(){
       // eslint-disable-next-line no-await-in-loop
       await Promise.race(running);
     }
-    await Promise.all(running);
   },[teams,generateLogo]);
 
   const clearAll = useCallback(()=>{ setTeams(prev=>prev.map(t=>({...t,logoUrl:''}))); },[]);
-
-  /** Demo: load fake teams so investors can click around instantly */
-  const loadDemo = useCallback(()=> {
-    const demo: Team[] = SAMPLES.slice(0, 12).map((s, idx) => ({
-      id: String(idx + 1),
-      name: s.name,
-      owner: 'Demo',
-      mascot: s.mascot,
-      primary: s.primary,
-      secondary: s.secondary,
-      seed: s.seed,
-      style: leagueStyle,
-      logoUrl: ''
-    }));
-    setTeams(demo);
-  }, [leagueStyle]);
 
   /** ---------- EMPTY (marketing) STATE ---------- **/
   if (!teams.length) {
@@ -193,27 +155,12 @@ export default function HomePage(){
 
             {/* League-wide Style knob */}
             <div className="mt-6 panel inline-block text-left">
-              <div className="flex items-center justify-between gap-6">
+              <div className="flex items-center gap-6">
                 <div>
                   <div className="text-xs text-[var(--muted)]">League Style</div>
                   <div className="text-sm font-semibold">{STYLE_LABELS[leagueStyle]}</div>
                 </div>
-                <div className="min-w-[220px]">
-                  <input
-                    type="range"
-                    min={0}
-                    max={5}
-                    step={1}
-                    value={leagueStyle}
-                    onChange={(e)=>setLeagueStyle(parseInt(e.target.value,10))}
-                    className="w-full accent-[var(--accent)]"
-                  />
-                  <div className="grid grid-cols-6 text-[10px] text-[var(--muted)] mt-1">
-                    {STYLE_LABELS.map((l, i) => (
-                      <div key={l} className={`text-center ${i === leagueStyle ? 'text-[var(--text)] font-semibold' : ''}`}>{l}</div>
-                    ))}
-                  </div>
-                </div>
+                <RotaryKnob value={leagueStyle} onChange={setLeagueStyle} size={92} ariaLabel="League style flavor" />
               </div>
             </div>
 
@@ -231,65 +178,9 @@ export default function HomePage(){
                 </>
               )}
               <button disabled={loading} className="btn btn-primary">{loading ? 'Loading…' : 'Load League'}</button>
-              <button type="button" className="btn" onClick={loadDemo}>Try Demo League</button>
             </form>
-
-            {/* Steps */}
-            <div className="mt-6 grid grid-cols-1 sm:grid-cols-3 gap-3 text-left">
-              {[
-                { t:'Choose a style', d:'Set a league-wide Style Flavor so teams look cohesive.' },
-                { t:'Load your league', d:'Sleeper, MFL, or ESPN (cookies for ESPN).' },
-                { t:'Generate logos', d:'Palette-locked, text-free, professional vector look.' },
-              ].map((s,i)=>(
-                <div key={i} className="panel">
-                  <div className="text-sm font-semibold">{i+1}. {s.t}</div>
-                  <div className="text-xs text-[var(--muted)] mt-1">{s.d}</div>
-                </div>
-              ))}
-            </div>
-          </section>
-
-          {/* Sample gallery */}
-          <section className="pb-14">
-            <div className="flex items-center justify-between mb-3">
-              <h2 className="text-lg font-bold">What your league’s logos can look like</h2>
-              <span className="badge">No text • Vector look</span>
-            </div>
-            <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4">
-              {SAMPLES.map((s, idx)=>(
-                <button
-                  key={idx}
-                  className="card overflow-hidden"
-                  onClick={()=>setSamplePreviewUrl(sampleUrl(s))}
-                  title={s.name}
-                >
-                  <div className="aspect-square bg-[var(--card)]">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={sampleUrl(s)} alt={s.name} className="h-full w-full object-cover" />
-                  </div>
-                  <div className="flex items-center justify-between px-3 py-2 text-xs">
-                    <span className="truncate">{s.name}</span>
-                    <span className="flex items-center gap-1">
-                      <span className="h-4 w-4 rounded" style={{background:s.primary}} />
-                      <span className="h-4 w-4 rounded border border-[var(--border)]" style={{background:s.secondary}} />
-                    </span>
-                  </div>
-                </button>
-              ))}
-            </div>
           </section>
         </main>
-
-        <Modal isOpen={!!samplePreviewUrl} onClose={()=>setSamplePreviewUrl(null)} title="Preview">
-          {samplePreviewUrl && (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={samplePreviewUrl} alt="Logo" className="rounded-xl shadow-lg max-h-[75vh] object-contain mx-auto" />
-          )}
-        </Modal>
-
-        <footer className="py-10 text-center text-xs text-[var(--muted)]">
-          Free to use • Download-ready PNG • Built for commissioners & managers
-        </footer>
       </>
     );
   }
@@ -301,19 +192,9 @@ export default function HomePage(){
         <div className="mx-auto max-w-6xl px-4 py-4 flex items-center justify-between gap-3">
           <div className="rounded-xl bg-[var(--accent2)]/15 px-3 py-2 text-sm font-extrabold text-[var(--accent2)]">Fantasy Logo Studio</div>
           <div className="flex items-center gap-4">
-            {/* League style knob visible even after load */}
-            <div className="hidden md:flex items-center gap-2">
+            <div className="hidden md:flex items-center gap-3">
               <span className="text-xs text-[var(--muted)]">Style</span>
-              <input
-                type="range"
-                min={0}
-                max={5}
-                step={1}
-                value={leagueStyle}
-                onChange={(e)=>setLeagueStyle(parseInt(e.target.value,10))}
-                className="w-[150px] accent-[var(--accent)]"
-                aria-label="League Style"
-              />
+              <RotaryKnob value={leagueStyle} onChange={setLeagueStyle} size={64} ariaLabel="League style flavor" />
               <span className="text-xs font-semibold">{STYLE_LABELS[leagueStyle]}</span>
               <button className="btn text-xs" onClick={applyLeagueStyleToAll}>Apply to all teams</button>
             </div>
