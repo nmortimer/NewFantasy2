@@ -50,7 +50,6 @@ function deriveMascot(name: string): string {
   for (const key of Object.keys(map)) {
     if (n.includes(key)) return map[key];
   }
-  // Single-word hints
   const hints = ['bear','wolf','eagle','hawk','dragon','knight','viking','pirate','bull','tiger','panther','raven','shark','stallion','bison','ram','fox','gorilla'];
   for (const h of hints) if (n.includes(h)) return h;
   return FALLBACK_MASCOTS[Math.floor(Math.random() * FALLBACK_MASCOTS.length)];
@@ -151,7 +150,6 @@ export default function HomePage() {
   }, [updateTeam]);
 
   const generateAll = useCallback(async () => {
-    // Simple concurrency limiter (2 at a time) to be nice to the free API
     const queue = [...teams];
     const running: Promise<void>[] = [];
     const worker = async (t: Team) => { await generateLogo(t); };
