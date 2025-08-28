@@ -46,6 +46,8 @@ function deriveMascot(name: string): string {
   return FALLBACK_MASCOTS[Math.floor(Math.random()*FALLBACK_MASCOTS.length)];
 }
 
+const sleep = (ms: number) => new Promise(res => setTimeout(res, ms));
+
 export default function HomePage(){
   const [provider, setProvider] = useState<Provider>('sleeper');
   const [leagueId, setLeagueId] = useState('');
@@ -57,6 +59,10 @@ export default function HomePage(){
 
   // League-wide style knob
   const [leagueStyle, setLeagueStyle] = useState<number>(0);
+
+  // Bulk generation progress
+  const [bulkRunning, setBulkRunning] = useState(false);
+  const [bulkProgress, setBulkProgress] = useState({ done: 0, total: 0 });
 
   const applyNFLPalette = useCallback(()=> {
     setTeams(prev => prev.map((t,i)=> {
@@ -121,18 +127,30 @@ export default function HomePage(){
     finally{ updateTeam(team.id,{generating:false}); }
   },[updateTeam]);
 
+  // Sequential Generate All with retry and small delay
   const generateAll = useCallback(async ()=>{
-    const queue=[...teams]; const running:Promise<void>[]=[];
-    const worker=async(t:Team)=>{ await generateLogo(t); };
-    while(queue.length){
-      while(running.length<2 && queue.length){
-        const t=queue.shift()!; const p=worker(t).finally(()=>{ const i=running.indexOf(p); if(i>=0) running.splice(i,1);});
-        running.push(p);
+    if (!teams.length || bulkRunning) return;
+    setBulkRunning(true);
+    setBulkProgress({ done: 0, total: teams.length });
+
+    for (let i = 0; i < teams.length; i++) {
+      const t = teams[i];
+      let attempt = 0, success = false;
+      while (attempt < 3 && !success) {
+        try {
+          await generateLogo(t);
+          success = true;
+        } catch {
+          attempt++;
+          await sleep(300 * attempt);
+        }
       }
-      // eslint-disable-next-line no-await-in-loop
-      await Promise.race(running);
+      setBulkProgress({ done: i + 1, total: teams.length });
+      await sleep(250); // small gap for stability
     }
-  },[teams,generateLogo]);
+
+    setBulkRunning(false);
+  }, [teams, generateLogo, bulkRunning]);
 
   const clearAll = useCallback(()=>{ setTeams(prev=>prev.map(t=>({...t,logoUrl:''}))); },[]);
 
@@ -148,7 +166,6 @@ export default function HomePage(){
         </header>
 
         <main className="mx-auto max-w-6xl px-4">
-          {/* Hero */}
           <section className="py-10 md:py-14 text-center">
             <h1 className="text-3xl md:text-4xl font-extrabold">Instant, professional NFL-style logos for your fantasy league</h1>
             <p className="mt-3 text-[var(--muted)] max-w-2xl mx-auto">Pick a style for your league, load your teams, and generate bold text-free emblems with your colors.</p>
@@ -201,7 +218,9 @@ export default function HomePage(){
 
             <button onClick={applyNFLPalette} className="btn">Apply NFL Palette</button>
             <button onClick={remixPalette} className="btn">Remix</button>
-            <button onClick={generateAll} className="btn btn-primary">Generate All</button>
+            <button onClick={generateAll} className="btn btn-primary" disabled={bulkRunning}>
+              {bulkRunning ? `Generating… ${bulkProgress.done}/${bulkProgress.total}` : 'Generate All'}
+            </button>
             <button onClick={clearAll} className="btn">Clear</button>
           </div>
         </div>
