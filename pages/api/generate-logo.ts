@@ -110,7 +110,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       `STRICT palette: ${paletteList}. ONLY these colors permitted. flat solid fills only. NO gradients, NO extra hues. ` +
       `monochrome shading allowed using black/white only.`;
 
-    // Hard negatives for text, badges, rings, backgrounds
+    // Aggressive negatives for text, badges/rings, and backgrounds
     const negatives = [
       'no text', 'no writing', 'no letters', 'no letterforms', 'no typography', 'no wordmark', 'no team name',
       'no initials', 'no monogram', 'no numbers', 'no numerals',
@@ -127,7 +127,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       `${paletteStrict} ${negatives}`;
 
     const encoded = encodeURIComponent(prompt);
-    // harmless flag (some models ignore it but when honored it removes overlay)
+    // harmless flag (if honored, removes overlay watermarks)
     const url = `https://image.pollinations.ai/prompt/${encoded}?seed=${variationSeed}&width=1024&height=1024&nologo=true`;
 
     return res.status(200).json({ url });
