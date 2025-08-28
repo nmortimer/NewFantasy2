@@ -13,7 +13,6 @@ export type Team = {
   seed: number;
   style?: number;        // 0..5
   logoUrl?: string;      // processed PNG (preview/download)
-  svgUrl?: string;       // processed SVG
   rawUrl?: string;       // original Pollinations image
   generating?: boolean;
 };
@@ -48,14 +47,6 @@ export default function TeamCard({ team, onUpdate, onGenerate, onOpenImage }: Pr
     a.download = `${team.name.replace(/\s+/g, '_')}.png`;
     a.click();
   }, [team.logoUrl, team.name]);
-
-  const downloadSvg = useCallback(() => {
-    if (!team.svgUrl) return;
-    const a = document.createElement('a');
-    a.href = team.svgUrl!;
-    a.download = `${team.name.replace(/\s+/g, '_')}.svg`;
-    a.click();
-  }, [team.svgUrl, team.name]);
 
   const copyUrl = useCallback(async () => {
     if (!team.logoUrl) return;
@@ -114,10 +105,9 @@ export default function TeamCard({ team, onUpdate, onGenerate, onOpenImage }: Pr
           <button className="btn h-10" onClick={() => setEditOpen(true)}>Edit</button>
         </div>
 
-        <div className="mt-2 grid grid-cols-4 gap-2">
+        <div className="mt-2 grid grid-cols-3 gap-2">
           <button className="btn h-9" onClick={onOpenImage} disabled={!team.logoUrl}>Open</button>
-          <button className="btn h-9" onClick={downloadPng} disabled={!team.logoUrl}>PNG</button>
-          <button className="btn h-9" onClick={downloadSvg} disabled={!team.svgUrl}>SVG</button>
+          <button className="btn h-9" onClick={downloadPng} disabled={!team.logoUrl}>Download</button>
           <button className="btn h-9" onClick={share} disabled={!team.logoUrl}>
             {canShare ? 'Share' : copyState === 'copied' ? 'Copied!' : 'Copy URL'}
           </button>
