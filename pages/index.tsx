@@ -41,10 +41,8 @@ export default function HomePage() {
   const [loading, setLoading] = useState(false);
   const [imageModalUrl, setImageModalUrl] = useState<string | null>(null);
 
-  // League-wide style knob
   const [leagueStyle, setLeagueStyle] = useState<number>(0);
 
-  // Bulk generation progress
   const [bulkRunning, setBulkRunning] = useState(false);
   const [bulkProgress, setBulkProgress] = useState({ done: 0, total: 0 });
 
@@ -87,6 +85,8 @@ export default function HomePage() {
         });
         if (!res.ok) throw new Error(`Failed: ${res.status}`);
         const data = await res.json();
+
+        // IMPORTANT: Always default mascot to the full team name (ignore any mascot returned)
         const mapped: Team[] = (data.teams || []).map((t: any, idx: number) => {
           const name = t.name || `Team ${idx + 1}`;
           const base = NFL_PALETTE[idx % NFL_PALETTE.length];
@@ -94,14 +94,15 @@ export default function HomePage() {
             id: t.id?.toString() ?? `${idx + 1}`,
             name,
             owner: t.owner || '',
-            mascot: t.mascot || name, // DEFAULT MASCOT = TEAM NAME
+            mascot: name, // <<—— default to team name every time we load
             primary: t.primary || base.primary,
             secondary: t.secondary || base.secondary,
             seed: t.seed || Math.floor(Math.random() * 10_000) + 1,
             style: leagueStyle,
-            logoUrl: t.logoUrl || '',
+            logoUrl: '',
           };
         });
+
         setTeams(mapped);
         const params = new URLSearchParams({ provider, leagueId: leagueId.trim() });
         if (typeof window !== 'undefined') window.history.replaceState(null, '', `?${params.toString()}`);
@@ -141,7 +142,6 @@ export default function HomePage() {
     [updateTeam]
   );
 
-  // Sequential Generate All with retry and small delay
   const generateAll = useCallback(async () => {
     if (!teams.length || bulkRunning) return;
     setBulkRunning(true);
@@ -161,7 +161,7 @@ export default function HomePage() {
         }
       }
       setBulkProgress({ done: i + 1, total: teams.length });
-      await sleep(250); // small gap for stability
+      await sleep(250);
     }
 
     setBulkRunning(false);
@@ -171,7 +171,6 @@ export default function HomePage() {
     setTeams(prev => prev.map(t => ({ ...t, logoUrl: '' })));
   }, []);
 
-  /** ---------- EMPTY (marketing) STATE ---------- **/
   if (!teams.length) {
     return (
       <>
@@ -193,7 +192,6 @@ export default function HomePage() {
               Pick a style for your league, load your teams, and generate bold text-free emblems with your colors.
             </p>
 
-            {/* League-wide Style knob */}
             <div className="mt-6 panel inline-block text-left">
               <div className="flex items-center gap-6">
                 <div>
@@ -247,7 +245,6 @@ export default function HomePage() {
     );
   }
 
-  /** ---------- WORKSPACE (after league loads) ---------- **/
   return (
     <>
       <header className="border-b border-[var(--border)] bg-[var(--panel)]/70 backdrop-blur">
@@ -265,18 +262,12 @@ export default function HomePage() {
               </button>
             </div>
 
-            <button onClick={applyNFLPalette} className="btn">
-              Apply NFL Palette
-            </button>
-            <button onClick={remixPalette} className="btn">
-              Remix
-            </button>
+            <button onClick={applyNFLPalette} className="btn">Apply NFL Palette</button>
+            <button onClick={remixPalette} className="btn">Remix</button>
             <button onClick={generateAll} className="btn btn-primary" disabled={bulkRunning}>
               {bulkRunning ? `Generating… ${bulkProgress.done}/${bulkProgress.total}` : 'Generate All'}
             </button>
-            <button onClick={clearAll} className="btn">
-              Clear
-            </button>
+            <button onClick={clearAll} className="btn">Clear</button>
           </div>
         </div>
       </header>
