@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import Modal from './Modal';
 import ColorPicker from './ColorPicker';
 import RotaryKnob from './RotaryKnob';
@@ -7,11 +7,11 @@ export type Team = {
   id: string;
   name: string;
   owner: string;
-  mascot: string;
+  mascot: string;        // now: defaults to team name (subject phrase)
   primary: string;
   secondary: string;
-  seed: number;           // internal variation handle
-  style?: number;         // 0..5 -> Style Flavor knob
+  seed: number;          // internal variation handle
+  style?: number;        // 0..5 -> Style Flavor knob
   logoUrl?: string;
   generating?: boolean;
 };
@@ -23,25 +23,6 @@ type Props = {
   onOpenImage: () => void;
 };
 
-function guessMascot(name: string): string {
-  const n = (name || '').toLowerCase();
-  const map: Record<string, string> = {
-    bears:'bear', cubs:'bear', lions:'lion', tigers:'tiger',
-    wolves:'wolf', wolfpack:'wolf', timberwolves:'wolf',
-    eagles:'eagle', hawks:'hawk', falcons:'falcon',
-    ravens:'raven', crows:'raven',
-    broncos:'stallion', mustangs:'stallion', colts:'stallion',
-    panthers:'panther', jaguars:'jaguar', leopards:'leopard',
-    sharks:'shark', dolphins:'dolphin',
-    bulls:'bull', bison:'bison', buffaloes:'bison',
-    vikings:'viking', knights:'knight', pirates:'pirate', buccaneers:'pirate',
-    rams:'ram', foxes:'fox', gorillas:'gorilla', gators:'alligator', crocodiles:'crocodile',
-    dragons:'dragon',
-  };
-  for (const k of Object.keys(map)) if (n.includes(k)) return map[k];
-  return 'wolf';
-}
-
 const STYLE_LABELS = ['Modern', 'Geometric', 'Symmetric', 'Dynamic', 'Retro', 'Rounded'] as const;
 
 export default function TeamCard({ team, onUpdate, onGenerate, onOpenImage }: Props) {
@@ -49,12 +30,9 @@ export default function TeamCard({ team, onUpdate, onGenerate, onOpenImage }: Pr
   const [canShare, setCanShare] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
 
-  useEffect(() => { if (typeof navigator !== 'undefined' && 'share' in navigator) setCanShare(true); }, []);
-
-  // ensure a mascot exists
-  const safeMascot = useMemo(() => (team.mascot?.trim() ? team.mascot : guessMascot(team.name)), [team.mascot, team.name]);
-  useEffect(() => { if (!team.mascot?.trim()) onUpdate({ mascot: safeMascot }); /* init */ // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [safeMascot]);
+  React.useEffect(() => {
+    if (typeof navigator !== 'undefined' && 'share' in navigator) setCanShare(true);
+  }, []);
 
   const shuffleSeed = useCallback(() => {
     onUpdate({ seed: Math.floor(Math.random() * 10_000) + 1 });
@@ -175,12 +153,12 @@ export default function TeamCard({ team, onUpdate, onGenerate, onOpenImage }: Pr
           </label>
 
           <label className="text-xs flex items-center gap-2">
-            <span className="w-28 text-[var(--muted)]">Mascot</span>
+            <span className="w-28 text-[var(--muted)]">Subject</span>
             <input
-              value={safeMascot}
+              value={team.mascot}
               onChange={(e) => onUpdate({ mascot: e.target.value })}
               className="input flex-1 text-xs"
-              placeholder="e.g., fox"
+              placeholder={`Team name or mascot (e.g., “${team.name}” or “shark”)`}
             />
           </label>
 
