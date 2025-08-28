@@ -1,4 +1,4 @@
-import { FormEvent, useCallback, useState } from 'react';
+import { FormEvent, useCallback, useMemo, useState } from 'react';
 import TeamCard, { Team } from '../components/TeamCard';
 import Modal from '../components/Modal';
 
@@ -44,6 +44,27 @@ function deriveMascot(name: string): string {
   return FALLBACK_MASCOTS[Math.floor(Math.random()*FALLBACK_MASCOTS.length)];
 }
 
+/** ---------- Demo/Sample Gallery ---------- **/
+type Sample = { mascot: string; primary: string; secondary: string; seed: number; name: string };
+const SAMPLES: Sample[] = [
+  { mascot:'wolf',     primary:'#00338D', secondary:'#C60C30', seed:7123, name:'Blue Wolves' },
+  { mascot:'eagle',    primary:'#203731', secondary:'#FFB612', seed:8142, name:'Verdant Eagles' },
+  { mascot:'tiger',    primary:'#0B162A', secondary:'#C83803', seed:5177, name:'Night Tigers' },
+  { mascot:'stallion', primary:'#0A2342', secondary:'#FB4F14', seed:4409, name:'Mile High' },
+  { mascot:'raven',    primary:'#241773', secondary:'#000000', seed:1903, name:'Ravencrest' },
+  { mascot:'panther',  primary:'#0085CA', secondary:'#101820', seed:6611, name:'Carolina' },
+  { mascot:'jaguar',   primary:'#006778', secondary:'#9F792C', seed:3302, name:'Teal Fangs' },
+  { mascot:'shark',    primary:'#002244', secondary:'#69BE28', seed:9281, name:'Sound Sharks' },
+  { mascot:'knight',   primary:'#4F2683', secondary:'#FFC62F', seed:2845, name:'Violet Knights' },
+  { mascot:'bear',     primary:'#AA0000', secondary:'#B3995D', seed:1199, name:'Gold Bears' },
+  { mascot:'viking',   primary:'#4F2683', secondary:'#FFC62F', seed:4040, name:'Nordic' },
+  { mascot:'bison',    primary:'#125740', secondary:'#FFFFFF', seed:9555, name:'Prairie Bison' },
+];
+function sampleUrl(s: Sample) {
+  const prompt = `professional sports team mascot logo — vector emblem of a ${s.mascot} head, centered, high contrast, thick outline; color palette strictly limited to: ${s.primary}, ${s.secondary}, white, black; no text, no letters, no numbers, no banners, no watermark`;
+  return `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}?seed=${s.seed}&width=640&height=640`;
+}
+
 export default function HomePage(){
   const [provider, setProvider] = useState<Provider>('sleeper');
   const [leagueId, setLeagueId] = useState('');
@@ -52,6 +73,7 @@ export default function HomePage(){
   const [teams, setTeams] = useState<Team[]>([]);
   const [loading, setLoading] = useState(false);
   const [imageModalUrl, setImageModalUrl] = useState<string|null>(null);
+  const [samplePreviewUrl, setSamplePreviewUrl] = useState<string|null>(null);
 
   const applyNFLPalette = useCallback(()=> {
     setTeams(prev => prev.map((t,i)=> {
@@ -128,6 +150,117 @@ export default function HomePage(){
 
   const clearAll = useCallback(()=>{ setTeams(prev=>prev.map(t=>({...t,logoUrl:''}))); },[]);
 
+  /** Demo: load fake teams so investors can click around instantly */
+  const loadDemo = useCallback(()=> {
+    const demo: Team[] = SAMPLES.slice(0, 12).map((s, idx) => ({
+      id: String(idx + 1),
+      name: s.name,
+      owner: 'Demo',
+      mascot: s.mascot,
+      primary: s.primary,
+      secondary: s.secondary,
+      seed: s.seed,
+      style: 0,
+      logoUrl: ''
+    }));
+    setTeams(demo);
+  }, []);
+
+  /** ---------- EMPTY (marketing) STATE ---------- **/
+  if (!teams.length) {
+    return (
+      <>
+        <header className="border-b border-[var(--border)] bg-[var(--panel)]/70 backdrop-blur">
+          <div className="mx-auto max-w-6xl px-4 py-5 flex items-center justify-between gap-3">
+            <div className="rounded-xl bg-[var(--accent2)]/15 px-3 py-2 text-sm font-extrabold text-[var(--accent2)]">Fantasy Logo Studio</div>
+            <div className="text-xs text-[var(--muted)]">Free • No API keys • Download-ready</div>
+          </div>
+        </header>
+
+        <main className="mx-auto max-w-6xl px-4">
+          {/* Hero */}
+          <section className="py-12 md:py-16 text-center">
+            <h1 className="text-3xl md:text-4xl font-extrabold">Instant, professional NFL-style logos for your fantasy league</h1>
+            <p className="mt-3 text-[var(--muted)] max-w-2xl mx-auto">Paste your league, pick colors, and generate bold, text-free emblems your whole league can download and share.</p>
+
+            <form onSubmit={handleLoadLeague} className="mt-6 flex flex-wrap items-center justify-center gap-2">
+              <select value={provider} onChange={(e)=>setProvider(e.target.value as Provider)} className="input text-sm w-[130px]" aria-label="Provider">
+                <option value="sleeper">Sleeper</option>
+                <option value="mfl">MFL</option>
+                <option value="espn">ESPN</option>
+              </select>
+              <input className="input text-sm w-[240px]" placeholder="League ID" value={leagueId} onChange={(e)=>setLeagueId(e.target.value)} />
+              {provider==='espn' && (
+                <>
+                  <input className="input text-sm w-[220px]" placeholder="ESPN SWID" value={espnSWID} onChange={(e)=>setEspnSWID(e.target.value)} />
+                  <input className="input text-sm w-[180px]" placeholder="ESPN S2" value={espnS2} onChange={(e)=>setEspnS2(e.target.value)} />
+                </>
+              )}
+              <button disabled={loading} className="btn btn-primary">{loading ? 'Loading…' : 'Load League'}</button>
+              <button type="button" className="btn" onClick={loadDemo}>Try Demo League</button>
+            </form>
+
+            {/* Steps */}
+            <div className="mt-6 grid grid-cols-1 sm:grid-cols-3 gap-3 text-left">
+              {[
+                { t:'Choose provider', d:'Sleeper, MFL, or ESPN (cookies for ESPN).' },
+                { t:'Fetch teams', d:'We map names → mascots and set a clean palette.' },
+                { t:'Generate logos', d:'AI images with a locked palette and no text.' },
+              ].map((s,i)=>(
+                <div key={i} className="panel">
+                  <div className="text-sm font-semibold">{i+1}. {s.t}</div>
+                  <div className="text-xs text-[var(--muted)] mt-1">{s.d}</div>
+                </div>
+              ))}
+            </div>
+          </section>
+
+          {/* Sample gallery */}
+          <section className="pb-14">
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="text-lg font-bold">What your league’s logos can look like</h2>
+              <span className="badge">No text • Vector look</span>
+            </div>
+            <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4">
+              {SAMPLES.map((s, idx)=>(
+                <button
+                  key={idx}
+                  className="card overflow-hidden"
+                  onClick={()=>setSamplePreviewUrl(sampleUrl(s))}
+                  title={s.name}
+                >
+                  <div className="aspect-square bg-[var(--card)]">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={sampleUrl(s)} alt={s.name} className="h-full w-full object-cover" />
+                  </div>
+                  <div className="flex items-center justify-between px-3 py-2 text-xs">
+                    <span className="truncate">{s.name}</span>
+                    <span className="flex items-center gap-1">
+                      <span className="h-4 w-4 rounded" style={{background:s.primary}} />
+                      <span className="h-4 w-4 rounded border border-[var(--border)]" style={{background:s.secondary}} />
+                    </span>
+                  </div>
+                </button>
+              ))}
+            </div>
+          </section>
+        </main>
+
+        <Modal isOpen={!!samplePreviewUrl} onClose={()=>setSamplePreviewUrl(null)} title="Preview">
+          {samplePreviewUrl && (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={samplePreviewUrl} alt="Logo" className="rounded-xl shadow-lg max-h-[75vh] object-contain mx-auto" />
+          )}
+        </Modal>
+
+        <footer className="py-10 text-center text-xs text-[var(--muted)]">
+          Free to use • Download-ready PNG • Built for commissioners & managers
+        </footer>
+      </>
+    );
+  }
+
+  /** ---------- WORKSPACE (after league loads) ---------- **/
   return (
     <>
       <header className="border-b border-[var(--border)] bg-[var(--panel)]/70 backdrop-blur">
