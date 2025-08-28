@@ -28,23 +28,7 @@ const NFL_PALETTE: Array<{ primary: string; secondary: string; name: string }> =
   { name: 'Chargers',      primary: '#0073CF', secondary: '#FFC20E' },
 ];
 
-const FALLBACK_MASCOTS = ['wolf','bear','eagle','hawk','dragon','knight','viking','pirate','bull','tiger','panther','raven','shark','stallion','bison','ram','fox','gorilla'];
 const STYLE_LABELS = ['Modern', 'Geometric', 'Symmetric', 'Dynamic', 'Retro', 'Rounded'] as const;
-
-function deriveMascot(name: string): string {
-  const n = (name || '').toLowerCase();
-  const map: Record<string,string> = {
-    bears:'bear', cubs:'bear', lions:'lion', tigers:'tiger', wolves:'wolf', wolfpack:'wolf', timberwolves:'wolf',
-    eagles:'eagle', hawks:'hawk', falcons:'falcon', ravens:'raven', crows:'raven',
-    broncos:'stallion', mustangs:'stallion', colts:'stallion', horses:'stallion',
-    panthers:'panther', jaguars:'jaguar', leopards:'leopard', sharks:'shark',
-    bulls:'bull', bison:'bison', buffaloes:'bison', vikings:'viking', knights:'knight',
-    pirates:'pirate', buccaneers:'pirate', rams:'ram', foxes:'fox', gorillas:'gorilla', gators:'alligator', crocodiles:'crocodile'
-  };
-  for (const k of Object.keys(map)) if (n.includes(k)) return map[k];
-  for (const h of FALLBACK_MASCOTS) if (n.includes(h)) return h;
-  return FALLBACK_MASCOTS[Math.floor(Math.random()*FALLBACK_MASCOTS.length)];
-}
 
 const sleep = (ms: number) => new Promise(res => setTimeout(res, ms));
 
@@ -93,15 +77,16 @@ export default function HomePage(){
       const data = await res.json();
       const mapped: Team[] = (data.teams || []).map((t:any, idx:number)=>{
         const name = t.name || `Team ${idx+1}`;
-        const mascot = t.mascot || deriveMascot(name);
         const base = NFL_PALETTE[idx % NFL_PALETTE.length];
         return {
           id: t.id?.toString() ?? `${idx+1}`,
-          name, owner: t.owner || '', mascot,
+          name,
+          owner: t.owner || '',
+          mascot: t.mascot || name, // SUBJECT defaults to FULL TEAM NAME
           primary: t.primary || base.primary,
           secondary: t.secondary || base.secondary,
           seed: t.seed || Math.floor(Math.random()*10_000)+1,
-          style: leagueStyle,       // apply selected league style
+          style: leagueStyle,
           logoUrl: t.logoUrl || ''
         };
       });
