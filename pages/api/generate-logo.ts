@@ -4,11 +4,11 @@ type Team = {
   id: string;
   name: string;
   owner: string;
-  mascot: string;
+  mascot: string;   // subject phrase (defaults to team name)
   primary: string;
   secondary: string;
-  seed: number;   // variation
-  style?: number; // 0..5 style family
+  seed: number;
+  style?: number;   // 0..5 style family
   logoUrl?: string;
 };
 
@@ -51,26 +51,6 @@ function hexToName(hex: string): string {
   return 'crimson';
 }
 
-/** Mascot fallback */
-function deriveMascotFromName(name: string): string {
-  const n = (name || '').toLowerCase();
-  const map: Record<string, string> = {
-    bears:'bear', cubs:'bear', lions:'lion', tigers:'tiger',
-    wolves:'wolf', timberwolves:'wolf', wolfpack:'wolf',
-    eagles:'eagle', hawks:'hawk', falcons:'falcon',
-    ravens:'raven', crows:'raven',
-    broncos:'stallion', mustangs:'stallion', colts:'stallion',
-    panthers:'panther', jaguars:'jaguar', leopards:'leopard',
-    sharks:'shark', dolphins:'dolphin',
-    bulls:'bull', bison:'bison', buffaloes:'bison',
-    vikings:'viking', knights:'knight', pirates:'pirate', buccaneers:'pirate',
-    rams:'ram', foxes:'fox', gorillas:'gorilla', gators:'alligator', crocodiles:'crocodile',
-    dragons:'dragon',
-  };
-  for (const k of Object.keys(map)) if (n.includes(k)) return map[k];
-  return 'wolf';
-}
-
 /** Style families (aligned to knob positions) */
 const STYLE_VARIANTS = [
   'modern NFL style, sharp angular geometry, bold negative space, aggressive silhouette',
@@ -96,7 +76,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const primaryName = primaryRaw.startsWith('#') ? hexToName(primaryRaw) : primaryRaw;
     const secondaryName = secondaryRaw.startsWith('#') ? hexToName(secondaryRaw) : secondaryRaw;
 
-    const mascot = (team.mascot && team.mascot.trim()) ? team.mascot.trim().toLowerCase() : deriveMascotFromName(team.name);
+    // Subject phrase: use mascot field (defaulted to team name)
+    const subject = (team.mascot && team.mascot.trim()) ? team.mascot.trim() : team.name;
 
     const variationSeed = team.seed ?? Math.floor(Math.random() * 10000) + 1;
     const styleIdx = (typeof team.style === 'number' && team.style >= 0 && team.style < STYLE_VARIANTS.length)
@@ -104,16 +85,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       : variationSeed % STYLE_VARIANTS.length;
     const style = STYLE_VARIANTS[styleIdx];
 
-    // Palette enforcement
-    const paletteList = `${primaryName} (${primaryRaw}), ${secondaryName} (${secondaryRaw}), white, black`;
+    // Palette enforcement — both names and hex, with strict rules
     const paletteStrict =
-      `STRICT palette: ${paletteList}. ONLY these colors permitted. flat solid fills only. NO gradients, NO extra hues. ` +
-      `monochrome shading allowed using black/white only.`;
+      `STRICT PALETTE: ${primaryName} (${primaryRaw}) as PRIMARY and ${secondaryName} (${secondaryRaw}) as SECONDARY, plus WHITE (#FFFFFF) and BLACK (#000000) only. ` +
+      `Dominant coverage: PRIMARY 60–80%, SECONDARY 10–30%. Flat solid fills only — NO gradients, NO extra hues. ` +
+      `If shading is needed, posterize using ONLY these colors.`;
 
     // Aggressive negatives for text, badges/rings, and backgrounds
     const negatives = [
-      'no text', 'no writing', 'no letters', 'no letterforms', 'no typography', 'no wordmark', 'no team name',
-      'no initials', 'no monogram', 'no numbers', 'no numerals',
+      'no text', 'no letters', 'no writing', 'no wordmark', 'no team name', 'no initials', 'no monogram', 'no numbers',
       'no shield', 'no crest', 'no badge', 'no patch', 'no emblem border', 'no border text',
       'no circle', 'no roundel', 'no ring', 'no circular border',
       'no banner', 'no ribbon', 'no sticker', 'no stamp', 'no coin', 'no medallion',
@@ -121,9 +101,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       'no background graphics', 'no textures', 'no gradient background', 'no scene',
     ].join(', ');
 
+    // Instruct the model to interpret the phrase semantically (not as text to draw)
+    const subjectLine =
+      `subject phrase: “${subject}”. Interpret the phrase semantically and depict a SINGLE MASCOT/OBJECT that best represents it (e.g., “Swedish Arctic Foxes” → an arctic fox head). Do NOT draw any words.`;
+
     const prompt =
       `professional sports team logo — ${style}; ` +
-      `flat vector mascot mark of a ${mascot} HEAD ONLY, centered, clean silhouette, crisp edges, heavy black outline, PLAIN WHITE BACKGROUND; ` +
+      `${subjectLine} ` +
+      `HEAD-ONLY mascot emblem, centered, vector/SVG-like flat design, crisp edges, heavy black outline, PLAIN WHITE BACKGROUND. ` +
       `${paletteStrict} ${negatives}`;
 
     const encoded = encodeURIComponent(prompt);
