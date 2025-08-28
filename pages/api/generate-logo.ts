@@ -73,12 +73,12 @@ function deriveMascotFromName(name: string): string {
 
 /** Style families (aligned to knob positions) */
 const STYLE_VARIANTS = [
-  'modern NFL style, sharp angular geometry, bold negative space',
-  'sleek geometric vector, minimal clean shapes, balanced proportions',
-  'front-facing symmetrical emblem, thick black outline, strong contrast',
-  '3/4 view dynamic head, aggressive expression, crisp edges',
-  'retro simplified mark, flat blocks, limited detail, solid fills',
-  'rounded friendly geometry, smooth curves, high clarity',
+  'modern NFL style, sharp angular geometry, bold negative space, aggressive silhouette',
+  'sleek geometric vector, minimal clean shapes, balanced proportions, modular forms',
+  'front-facing symmetrical emblem, mirror symmetry, heavy outline, strong contrast',
+  '3/4 view dynamic head, forward motion, crisp edges, athletic energy',
+  'retro simplified mark, flat blocks, minimal detail, classic proportions',
+  'rounded friendly geometry, soft curves, approachable, high clarity',
 ];
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -104,26 +104,31 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       : variationSeed % STYLE_VARIANTS.length;
     const style = STYLE_VARIANTS[styleIdx];
 
-    // Strong palette enforcement and professional constraints
+    // Palette enforcement
     const paletteList = `${primaryName} (${primaryRaw}), ${secondaryName} (${secondaryRaw}), white, black`;
-    const paletteStrict = `STRICT palette: ${paletteList}. dominant color: ${primaryName} (${primaryRaw}); accent: ${secondaryName} (${secondaryRaw}). NO other colors, NO gradients.`;
+    const paletteStrict =
+      `STRICT palette: ${paletteList}. ONLY these colors permitted. flat solid fills only. NO gradients, NO extra hues. ` +
+      `monochrome shading allowed using black/white only.`;
 
-    // Aggressive negative terms to kill text/badges/shields/rings
+    // Hard negatives for text, badges, rings, backgrounds
     const negatives = [
-      'no text', 'no logo text', 'no letters', 'no typography', 'no lettering', 'no wordmark', 'no team name',
-      'no numbers', 'no numerals', 'no initials', 'no monogram',
-      'no shield', 'no crest', 'no badge', 'no circle badge', 'no ring', 'no emblem text',
-      'no banner', 'no ribbon', 'no patch', 'no sticker', 'no stamp', 'no coin', 'no medallion',
-      'no watermark', 'no signature', 'no background scene', 'no city skyline', 'no stadium',
+      'no text', 'no writing', 'no letters', 'no letterforms', 'no typography', 'no wordmark', 'no team name',
+      'no initials', 'no monogram', 'no numbers', 'no numerals',
+      'no shield', 'no crest', 'no badge', 'no patch', 'no emblem border', 'no border text',
+      'no circle', 'no roundel', 'no ring', 'no circular border',
+      'no banner', 'no ribbon', 'no sticker', 'no stamp', 'no coin', 'no medallion',
+      'no watermark', 'no signature',
+      'no background graphics', 'no textures', 'no gradient background', 'no scene',
     ].join(', ');
 
     const prompt =
       `professional sports team logo — ${style}; ` +
-      `flat vector mascot mark of a ${mascot} HEAD ONLY, centered, clean silhouette, crisp edges, heavy outline, plain white background; ` +
-      `${paletteStrict}; ${negatives}`;
+      `flat vector mascot mark of a ${mascot} HEAD ONLY, centered, clean silhouette, crisp edges, heavy black outline, PLAIN WHITE BACKGROUND; ` +
+      `${paletteStrict} ${negatives}`;
 
     const encoded = encodeURIComponent(prompt);
-    const url = `https://image.pollinations.ai/prompt/${encoded}?seed=${variationSeed}&width=1024&height=1024`;
+    // harmless flag (some models ignore it but when honored it removes overlay)
+    const url = `https://image.pollinations.ai/prompt/${encoded}?seed=${variationSeed}&width=1024&height=1024&nologo=true`;
 
     return res.status(200).json({ url });
   } catch (e: any) {
