@@ -1,0 +1,16 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Tokens */
+:root {
+  --bg: #0b0f14;
+  --panel: #0f1520;
+  --card: #111927;
+  --border: #1f2a37;
+  --text: #e5eef8;
+  --muted: #9fb1c6;
+  --accent: #15a3ff;
+  --accent2: #7c5cff;
+  --shadow: 0 10px 30px rgba(0,0,0,0.35);
+}
