@@ -1,157 +1,82 @@
-import React, { useCallback, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 
-/**
- * RotaryKnob — a discrete rotary control with N stops (default 6, 0..5).
- * Click/drag or use arrow keys. 270° sweep (-135°..+135°).
- */
 type Props = {
-  value: number;                // current stop index (0..stops-1)
+  value: number;          // 0..5
   onChange: (v: number) => void;
-  size?: number;                // px, default 72
-  stops?: number;               // default 6
+  size?: number;
   ariaLabel?: string;
 };
 
-const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v));
+export default function RotaryKnob({ value, onChange, size = 72, ariaLabel = 'Style knob' }: Props) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [isDown, setIsDown] = useState(false);
 
-export default function RotaryKnob({
-  value,
-  onChange,
-  size = 72,
-  stops = 6,
-  ariaLabel = 'Style knob',
-}: Props) {
-  const ref = useRef<HTMLDivElement | null>(null);
-  const [dragging, setDragging] = useState(false);
+  // Discrete 6 stops around a circle
+  const stops = 6;
+  const angle = (value / stops) * 300 - 150; // -150deg..+150deg range
 
-  const startDeg = -135;
-  const endDeg = 135;
-  const span = endDeg - startDeg; // 270
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
 
-  const toAngle = useCallback(
-    (clientX: number, clientY: number) => {
-      const el = ref.current!;
+    const onMove = (e: PointerEvent) => {
+      if (!isDown) return;
       const rect = el.getBoundingClientRect();
       const cx = rect.left + rect.width / 2;
       const cy = rect.top + rect.height / 2;
-      const dx = clientX - cx;
-      const dy = clientY - cy;
-      let angle = (Math.atan2(dy, dx) * 180) / Math.PI; // -180..180
-      let clamped = angle;
-      if (angle < startDeg) clamped = startDeg;
-      if (angle > endDeg) clamped = endDeg;
-      return clamped;
-    },
-    []
-  );
+      const x = (e.clientX - cx);
+      const y = (e.clientY - cy);
+      const deg = (Math.atan2(y, x) * 180) / Math.PI; // -180..180
+      // Map deg (-150..150) to 0..stops-1
+      const clamped = Math.max(-150, Math.min(150, deg));
+      const t = (clamped + 150) / 300; // 0..1
+      const idx = Math.round(t * (stops - 1));
+      onChange(idx);
+    };
 
-  const setFromEvent = useCallback(
-    (e: PointerEvent | MouseEvent | React.PointerEvent | React.MouseEvent) => {
-      const any = e as any;
-      const deg = toAngle(any.clientX, any.clientY);
-      const t = (deg - startDeg) / span; // 0..1
-      const v = Math.round(t * (stops - 1));
-      onChange(clamp(v, 0, stops - 1));
-    },
-    [onChange, span, stops]
-  );
+    const onUp = () => setIsDown(false);
 
-  const onPointerDown = useCallback(
-    (e: React.PointerEvent) => {
-      (e.target as HTMLElement).setPointerCapture?.(e.pointerId);
-      setDragging(true);
-      setFromEvent(e);
-    },
-    [setFromEvent]
-  );
-
-  const onPointerMove = useCallback(
-    (e: React.PointerEvent) => {
-      if (!dragging) return;
-      setFromEvent(e);
-    },
-    [dragging, setFromEvent]
-  );
-
-  const onPointerUp = useCallback(() => setDragging(false), []);
-
-  const angle = useMemo(
-    () => startDeg + (span * clamp(value, 0, stops - 1)) / (stops - 1),
-    [value, span, stops]
-  );
-
-  const tickEls = useMemo(() => {
-    const arr = [];
-    for (let i = 0; i < stops; i++) {
-      const a = startDeg + (span * i) / (stops - 1);
-      arr.push(
-        <div
-          key={i}
-          className="absolute left-1/2 top-1/2 h-[10%] w-[2px] bg-[var(--border)] rounded"
-          style={{
-            transform: `rotate(${a}deg) translate(${size * 0.4}px)`,
-            transformOrigin: '0 0',
-            opacity: i === value ? 1 : 0.6,
-          }}
-        />
-      );
-    }
-    return arr;
-  }, [stops, size, value, span]);
+    window.addEventListener('pointermove', onMove);
+    window.addEventListener('pointerup', onUp);
+    return () => {
+      window.removeEventListener('pointermove', onMove);
+      window.removeEventListener('pointerup', onUp);
+    };
+  }, [isDown, onChange]);
 
   return (
     <div
       ref={ref}
       role="slider"
-      aria-valuemin={0}
-      aria-valuemax={stops - 1}
-      aria-valuenow={value}
       aria-label={ariaLabel}
-      tabIndex={0}
-      onKeyDown={(e) => {
-        if (e.key === 'ArrowLeft' || e.key === 'ArrowDown') onChange(clamp(value - 1, 0, stops - 1));
-        if (e.key === 'ArrowRight' || e.key === 'ArrowUp') onChange(clamp(value + 1, 0, stops - 1));
-      }}
-      onPointerDown={onPointerDown}
-      onPointerMove={onPointerMove}
-      onPointerUp={onPointerUp}
-      onPointerCancel={onPointerUp}
-      className="relative rounded-full shadow-inner select-none"
-      style={{
-        width: size,
-        height: size,
-        background:
-          'radial-gradient(60% 60% at 50% 40%, rgba(255,255,255,0.08), rgba(0,0,0,0.35))',
-        boxShadow:
-          'inset 0 6px 16px rgba(0,0,0,0.45), inset 0 -4px 10px rgba(255,255,255,0.05), 0 2px 6px rgba(0,0,0,0.6)',
-      }}
+      aria-valuemin={0}
+      aria-valuemax={5}
+      aria-valuenow={value}
+      className="relative rounded-full bg-[var(--card-2)] border border-[var(--border)] shadow-inner"
+      style={{ width: size, height: size }}
+      onPointerDown={() => setIsDown(true)}
     >
-      {tickEls}
-
-      {/* center cap */}
+      {/* marks */}
+      {[...Array(6)].map((_, i) => {
+        const a = (i / stops) * 300 - 150;
+        const r = size / 2 - 6;
+        const x = size / 2 + r * Math.cos((a * Math.PI) / 180);
+        const y = size / 2 + r * Math.sin((a * Math.PI) / 180);
+        return (
+          <div
+            key={i}
+            className={`absolute h-1 w-1 rounded-full ${i === value ? 'bg-[var(--accent2)]' : 'bg-[var(--muted)]/60'}`}
+            style={{ left: x - 2, top: y - 2 }}
+          />
+        );
+      })}
+      {/* pointer */}
       <div
-        className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full border border-[var(--border)]"
-        style={{
-          width: size * 0.58,
-          height: size * 0.58,
-          background:
-            'radial-gradient(50% 50% at 40% 35%, rgba(255,255,255,0.08), rgba(0,0,0,0.4))',
-          boxShadow: 'inset 0 1px 2px rgba(255,255,255,0.08)',
-        }}
+        className="absolute left-1/2 top-1/2 h-[70%] w-[2px] bg-[var(--accent2)] origin-bottom"
+        style={{ transform: `translate(-50%, -100%) rotate(${angle}deg)` }}
       />
-
-      {/* indicator */}
-      <div
-        className="absolute left-1/2 top-1/2 rounded-full"
-        style={{
-          width: size * 0.10,
-          height: size * 0.10,
-          background: 'var(--accent)',
-          transform: `rotate(${angle}deg) translate(${size * 0.36}px)`,
-          transformOrigin: 'center left',
-          boxShadow: '0 0 12px rgba(56,189,248,0.45)',
-        }}
-      />
+      {/* center dot */}
+      <div className="absolute left-1/2 top-1/2 h-3 w-3 -translate-x-1/2 -translate-y-1/2 rounded-full bg-[var(--panel)] border border-[var(--border)]" />
     </div>
   );
 }
