@@ -1,4 +1,4 @@
-import { FormEvent, useCallback, useMemo, useState } from 'react';
+import { FormEvent, useCallback, useState } from 'react';
 import TeamCard, { Team } from '../components/TeamCard';
 import Modal from '../components/Modal';
 
@@ -28,6 +28,7 @@ const NFL_PALETTE: Array<{ primary: string; secondary: string; name: string }> =
 ];
 
 const FALLBACK_MASCOTS = ['wolf','bear','eagle','hawk','dragon','knight','viking','pirate','bull','tiger','panther','raven','shark','stallion','bison','ram','fox','gorilla'];
+const STYLE_LABELS = ['Modern', 'Geometric', 'Symmetric', 'Dynamic', 'Retro', 'Rounded'] as const;
 
 function deriveMascot(name: string): string {
   const n = (name || '').toLowerCase();
@@ -75,6 +76,9 @@ export default function HomePage(){
   const [imageModalUrl, setImageModalUrl] = useState<string|null>(null);
   const [samplePreviewUrl, setSamplePreviewUrl] = useState<string|null>(null);
 
+  // NEW: league-wide style knob (applies to initial mapping + can re-apply later)
+  const [leagueStyle, setLeagueStyle] = useState<number>(0);
+
   const applyNFLPalette = useCallback(()=> {
     setTeams(prev => prev.map((t,i)=> {
       const p = NFL_PALETTE[i % NFL_PALETTE.length];
@@ -87,6 +91,10 @@ export default function HomePage(){
       return { ...t, primary: p.primary, secondary: p.secondary };
     }));
   },[]);
+
+  const applyLeagueStyleToAll = useCallback(()=>{
+    setTeams(prev => prev.map(t => ({ ...t, style: leagueStyle })));
+  },[leagueStyle]);
 
   const handleLoadLeague = useCallback(async (e: FormEvent)=>{
     e.preventDefault(); if(!leagueId.trim()) return;
@@ -108,7 +116,7 @@ export default function HomePage(){
           primary: t.primary || base.primary,
           secondary: t.secondary || base.secondary,
           seed: t.seed || Math.floor(Math.random()*10_000)+1,
-          style: 0,
+          style: leagueStyle,       // <- seed teams with the chosen league style
           logoUrl: t.logoUrl || ''
         };
       });
@@ -117,7 +125,7 @@ export default function HomePage(){
       if (typeof window !== 'undefined') window.history.replaceState(null, '', `?${params.toString()}`);
     }catch(err){ console.error(err); alert('Could not load league. Double-check provider/ID (ESPN may require SWID/S2).'); }
     finally{ setLoading(false); }
-  },[provider,leagueId,espnSWID,espnS2]);
+  },[provider,leagueId,espnSWID,espnS2,leagueStyle]);
 
   const updateTeam = useCallback((id:string,patch:Partial<Team>)=>{
     setTeams(prev=>prev.map(t=>t.id===id?{...t,...patch}:t));
@@ -160,11 +168,11 @@ export default function HomePage(){
       primary: s.primary,
       secondary: s.secondary,
       seed: s.seed,
-      style: 0,
+      style: leagueStyle,
       logoUrl: ''
     }));
     setTeams(demo);
-  }, []);
+  }, [leagueStyle]);
 
   /** ---------- EMPTY (marketing) STATE ---------- **/
   if (!teams.length) {
@@ -179,9 +187,35 @@ export default function HomePage(){
 
         <main className="mx-auto max-w-6xl px-4">
           {/* Hero */}
-          <section className="py-12 md:py-16 text-center">
+          <section className="py-10 md:py-14 text-center">
             <h1 className="text-3xl md:text-4xl font-extrabold">Instant, professional NFL-style logos for your fantasy league</h1>
-            <p className="mt-3 text-[var(--muted)] max-w-2xl mx-auto">Paste your league, pick colors, and generate bold, text-free emblems your whole league can download and share.</p>
+            <p className="mt-3 text-[var(--muted)] max-w-2xl mx-auto">Pick a style for your league, load your teams, and generate bold text-free emblems with your colors.</p>
+
+            {/* League-wide Style knob */}
+            <div className="mt-6 panel inline-block text-left">
+              <div className="flex items-center justify-between gap-6">
+                <div>
+                  <div className="text-xs text-[var(--muted)]">League Style</div>
+                  <div className="text-sm font-semibold">{STYLE_LABELS[leagueStyle]}</div>
+                </div>
+                <div className="min-w-[220px]">
+                  <input
+                    type="range"
+                    min={0}
+                    max={5}
+                    step={1}
+                    value={leagueStyle}
+                    onChange={(e)=>setLeagueStyle(parseInt(e.target.value,10))}
+                    className="w-full accent-[var(--accent)]"
+                  />
+                  <div className="grid grid-cols-6 text-[10px] text-[var(--muted)] mt-1">
+                    {STYLE_LABELS.map((l, i) => (
+                      <div key={l} className={`text-center ${i === leagueStyle ? 'text-[var(--text)] font-semibold' : ''}`}>{l}</div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
 
             <form onSubmit={handleLoadLeague} className="mt-6 flex flex-wrap items-center justify-center gap-2">
               <select value={provider} onChange={(e)=>setProvider(e.target.value as Provider)} className="input text-sm w-[130px]" aria-label="Provider">
@@ -203,9 +237,9 @@ export default function HomePage(){
             {/* Steps */}
             <div className="mt-6 grid grid-cols-1 sm:grid-cols-3 gap-3 text-left">
               {[
-                { t:'Choose provider', d:'Sleeper, MFL, or ESPN (cookies for ESPN).' },
-                { t:'Fetch teams', d:'We map names → mascots and set a clean palette.' },
-                { t:'Generate logos', d:'AI images with a locked palette and no text.' },
+                { t:'Choose a style', d:'Set a league-wide Style Flavor so teams look cohesive.' },
+                { t:'Load your league', d:'Sleeper, MFL, or ESPN (cookies for ESPN).' },
+                { t:'Generate logos', d:'Palette-locked, text-free, professional vector look.' },
               ].map((s,i)=>(
                 <div key={i} className="panel">
                   <div className="text-sm font-semibold">{i+1}. {s.t}</div>
@@ -266,7 +300,24 @@ export default function HomePage(){
       <header className="border-b border-[var(--border)] bg-[var(--panel)]/70 backdrop-blur">
         <div className="mx-auto max-w-6xl px-4 py-4 flex items-center justify-between gap-3">
           <div className="rounded-xl bg-[var(--accent2)]/15 px-3 py-2 text-sm font-extrabold text-[var(--accent2)]">Fantasy Logo Studio</div>
-          <div className="flex gap-2">
+          <div className="flex items-center gap-4">
+            {/* League style knob visible even after load */}
+            <div className="hidden md:flex items-center gap-2">
+              <span className="text-xs text-[var(--muted)]">Style</span>
+              <input
+                type="range"
+                min={0}
+                max={5}
+                step={1}
+                value={leagueStyle}
+                onChange={(e)=>setLeagueStyle(parseInt(e.target.value,10))}
+                className="w-[150px] accent-[var(--accent)]"
+                aria-label="League Style"
+              />
+              <span className="text-xs font-semibold">{STYLE_LABELS[leagueStyle]}</span>
+              <button className="btn text-xs" onClick={applyLeagueStyleToAll}>Apply to all teams</button>
+            </div>
+
             <button onClick={applyNFLPalette} className="btn">Apply NFL Palette</button>
             <button onClick={remixPalette} className="btn">Remix</button>
             <button onClick={generateAll} className="btn btn-primary">Generate All</button>
