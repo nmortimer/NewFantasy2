@@ -9,7 +9,8 @@ export type Team = {
   mascot: string;
   primary: string;
   secondary: string;
-  seed: number;           // kept in data model; users see "New Look" instead of a numeric control
+  seed: number;           // internal variation handle
+  style?: number;         // 0..5 -> Style Flavor knob
   logoUrl?: string;
   generating?: boolean;
 };
@@ -21,26 +22,26 @@ type Props = {
   onOpenImage: () => void;
 };
 
-/** Fallback mascot guess; only used internally if team.mascot is empty */
 function guessMascot(name: string): string {
   const n = (name || '').toLowerCase();
   const map: Record<string, string> = {
-    bears: 'bear', cubs: 'bear',
-    lions: 'lion', tigers: 'tiger',
-    wolves: 'wolf', wolfpack: 'wolf', timberwolves: 'wolf',
-    eagles: 'eagle', hawks: 'hawk', falcons: 'falcon',
-    ravens: 'raven', crows: 'raven',
-    broncos: 'stallion', mustangs: 'stallion', colts: 'stallion', horses: 'stallion',
-    panthers: 'panther', jaguars: 'jaguar', leopards: 'leopard',
-    sharks: 'shark', dolphins: 'dolphin',
-    bulls: 'bull', bison: 'bison', buffaloes: 'bison',
-    vikings: 'viking', knights: 'knight', pirates: 'pirate', buccaneers: 'pirate',
-    rams: 'ram', foxes: 'fox', gorillas: 'gorilla', gators: 'alligator', crocodiles: 'crocodile',
-    dragons: 'dragon',
+    bears:'bear', cubs:'bear', lions:'lion', tigers:'tiger',
+    wolves:'wolf', wolfpack:'wolf', timberwolves:'wolf',
+    eagles:'eagle', hawks:'hawk', falcons:'falcon',
+    ravens:'raven', crows:'raven',
+    broncos:'stallion', mustangs:'stallion', colts:'stallion',
+    panthers:'panther', jaguars:'jaguar', leopards:'leopard',
+    sharks:'shark', dolphins:'dolphin',
+    bulls:'bull', bison:'bison', buffaloes:'bison',
+    vikings:'viking', knights:'knight', pirates:'pirate', buccaneers:'pirate',
+    rams:'ram', foxes:'fox', gorillas:'gorilla', gators:'alligator', crocodiles:'crocodile',
+    dragons:'dragon',
   };
   for (const k of Object.keys(map)) if (n.includes(k)) return map[k];
   return 'wolf';
 }
+
+const STYLE_LABELS = ['Modern', 'Geometric', 'Symmetric', 'Dynamic', 'Retro', 'Rounded'] as const;
 
 export default function TeamCard({ team, onUpdate, onGenerate, onOpenImage }: Props) {
   const [copyState, setCopyState] = useState<'idle'|'copied'>('idle');
@@ -49,8 +50,10 @@ export default function TeamCard({ team, onUpdate, onGenerate, onOpenImage }: Pr
 
   useEffect(() => { if (typeof navigator !== 'undefined' && 'share' in navigator) setCanShare(true); }, []);
 
-  // If mascot is blank, suggest one quietly (not shown as a button anymore)
-  const suggestedMascot = useMemo(() => team.mascot?.trim() || guessMascot(team.name), [team.mascot, team.name]);
+  // ensure a mascot exists
+  const safeMascot = useMemo(() => (team.mascot?.trim() ? team.mascot : guessMascot(team.name)), [team.mascot, team.name]);
+  useEffect(() => { if (!team.mascot?.trim()) onUpdate({ mascot: safeMascot }); /* init */ // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [safeMascot]);
 
   const shuffleSeed = useCallback(() => {
     onUpdate({ seed: Math.floor(Math.random() * 10_000) + 1 });
@@ -75,38 +78,27 @@ export default function TeamCard({ team, onUpdate, onGenerate, onOpenImage }: Pr
 
   const share = useCallback(async () => {
     if (!team.logoUrl) return;
-    if (canShare) {
-      try { await (navigator as any).share({ title: team.name, url: team.logoUrl }); } catch {}
-    } else {
-      await copyUrl();
-    }
+    if (canShare) { try { await (navigator as any).share({ title: team.name, url: team.logoUrl }); } catch {} }
+    else { await copyUrl(); }
   }, [canShare, copyUrl, team.logoUrl, team.name]);
 
-  // Modal actions
   const generateAndClose = useCallback(() => {
     setEditOpen(false);
     onGenerate();
   }, [onGenerate]);
 
   const newLook = useCallback(() => {
-    // Shuffle style then generate; close immediately so the grid never overflows
     setEditOpen(false);
     shuffleSeed();
     onGenerate();
   }, [shuffleSeed, onGenerate]);
 
-  // Ensure we never send empty mascot to the API
-  useEffect(() => {
-    if (!team.mascot || !team.mascot.trim()) {
-      onUpdate({ mascot: suggestedMascot });
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [suggestedMascot]);
+  const styleIdx = team.style ?? 0;
 
   return (
     <>
       <div className="card p-4 flex flex-col">
-        {/* Header (code pill removed) */}
+        {/* Header */}
         <div className="min-w-0">
           <h3 className="text-sm font-semibold leading-tight break-words">{team.name}</h3>
           <p className="text-[10px] text-[var(--muted)]">{team.owner || '—'}</p>
@@ -153,9 +145,9 @@ export default function TeamCard({ team, onUpdate, onGenerate, onOpenImage }: Pr
         </div>
       </div>
 
-      {/* EDIT MODAL (no overflow, closes on generate) */}
+      {/* EDIT MODAL */}
       <Modal isOpen={editOpen} onClose={() => setEditOpen(false)} title="Edit Logo">
-        <div className="grid gap-3">
+        <div className="grid gap-4">
           <label className="text-xs flex items-center gap-2">
             <span className="w-28 text-[var(--muted)]">Team Name</span>
             <input
@@ -169,7 +161,7 @@ export default function TeamCard({ team, onUpdate, onGenerate, onOpenImage }: Pr
           <label className="text-xs flex items-center gap-2">
             <span className="w-28 text-[var(--muted)]">Mascot</span>
             <input
-              value={team.mascot}
+              value={safeMascot}
               onChange={(e) => onUpdate({ mascot: e.target.value })}
               className="input flex-1 text-xs"
               placeholder="e.g., fox"
@@ -181,9 +173,32 @@ export default function TeamCard({ team, onUpdate, onGenerate, onOpenImage }: Pr
             <ColorPicker label="Secondary" value={team.secondary} onChange={(v) => onUpdate({ secondary: v })} />
           </div>
 
-          {/* Style controls: no number field, just actions */}
+          {/* Style Flavor knob */}
+          <div className="grid gap-2">
+            <div className="flex items-center justify-between">
+              <span className="text-xs text-[var(--muted)]">Style Flavor</span>
+              <span className="text-xs font-semibold">{STYLE_LABELS[styleIdx]}</span>
+            </div>
+            <input
+              type="range"
+              min={0}
+              max={5}
+              step={1}
+              value={styleIdx}
+              onChange={(e) => onUpdate({ style: parseInt(e.target.value, 10) })}
+              className="w-full accent-[var(--accent)]"
+              aria-label="Style Flavor"
+            />
+            <div className="grid grid-cols-6 text-[10px] text-[var(--muted)]">
+              {STYLE_LABELS.map((l, i) => (
+                <div key={l} className={`text-center ${i === styleIdx ? 'text-[var(--text)] font-semibold' : ''}`}>{l}</div>
+              ))}
+            </div>
+          </div>
+
+          {/* Actions */}
           <div className="mt-2 flex flex-col sm:flex-row gap-2 sm:items-center sm:justify-between">
-            <span className="text-xs text-[var(--muted)]">Style</span>
+            <span className="text-xs text-[var(--muted)]">Tip: “New Look” shuffles details within the chosen style.</span>
             <div className="flex gap-2 sm:ml-auto">
               <button className="btn" onClick={newLook} disabled={!!team.generating}>New Look</button>
               <button className="btn btn-primary" onClick={generateAndClose} disabled={!!team.generating}>
