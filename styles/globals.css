@@ -2,7 +2,7 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Tokens */
+/* ---------- Design Tokens (dark theme) ---------- */
 :root {
   --bg: #0b0f14;
   --panel: #0f1520;
@@ -13,4 +13,54 @@
   --accent: #15a3ff;
   --accent2: #7c5cff;
   --shadow: 0 10px 30px rgba(0,0,0,0.35);
+}
+
+/* ---------- Reusable classes ---------- */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: .5rem;
+  padding: .5rem .75rem;
+  font-size: .875rem;
+  font-weight: 600;
+  border-radius: .75rem;
+  border: 1px solid var(--border);
+  background: var(--card);
+  color: var(--text);
+  box-shadow: var(--shadow);
+  cursor: pointer;
+  transition: transform .05s ease, background .2s ease, border-color .2s ease, opacity .2s ease;
+}
+.btn:hover { transform: translateY(-1px); border-color: var(--accent); }
+.btn:disabled { opacity: .5; cursor: not-allowed; transform: none; }
+.btn-ghost { background: transparent; box-shadow: none; }
+.btn-primary { background: linear-gradient(180deg, var(--accent), #0f7bcc); border-color: #0f7bcc; color: white; }
+.btn-secondary { background: linear-gradient(180deg, var(--accent2), #5a3ae6); border-color: #5a3ae6; color: white; }
+
+.card {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 1rem;
+  box-shadow: var(--shadow);
+}
+
+.panel {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 1rem;
+  padding: 1rem;
+  box-shadow: var(--shadow);
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  padding: .15rem .5rem;
+  font-size: .7rem;
+  font-weight: 700;
+  color: var(--accent);
+  background: rgba(21, 163, 255, 0.12);
+  border: 1px solid rgba(21, 163, 255, 0.35);
+  border-radius: .5rem;
 }
