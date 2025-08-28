@@ -32,14 +32,14 @@ const STYLE_LABELS = ['Modern', 'Geometric', 'Symmetric', 'Dynamic', 'Retro', 'R
 
 const sleep = (ms: number) => new Promise(res => setTimeout(res, ms));
 
-export default function HomePage(){
+export default function HomePage() {
   const [provider, setProvider] = useState<Provider>('sleeper');
   const [leagueId, setLeagueId] = useState('');
   const [espnSWID, setEspnSWID] = useState('');
   const [espnS2, setEspnS2] = useState('');
   const [teams, setTeams] = useState<Team[]>([]);
   const [loading, setLoading] = useState(false);
-  const [imageModalUrl, setImageModalUrl] = useState<string|null>(null);
+  const [imageModalUrl, setImageModalUrl] = useState<string | null>(null);
 
   // League-wide style knob
   const [leagueStyle, setLeagueStyle] = useState<number>(0);
@@ -48,79 +48,109 @@ export default function HomePage(){
   const [bulkRunning, setBulkRunning] = useState(false);
   const [bulkProgress, setBulkProgress] = useState({ done: 0, total: 0 });
 
-  const applyNFLPalette = useCallback(()=> {
-    setTeams(prev => prev.map((t,i)=> {
-      const p = NFL_PALETTE[i % NFL_PALETTE.length];
-      return { ...t, primary: p.primary, secondary: p.secondary };
-    }));
-  },[]);
-  const remixPalette = useCallback(()=> {
-    setTeams(prev => prev.map(t=> {
-      const p = NFL_PALETTE[Math.floor(Math.random()*NFL_PALETTE.length)];
-      return { ...t, primary: p.primary, secondary: p.secondary };
-    }));
-  },[]);
+  const applyNFLPalette = useCallback(() => {
+    setTeams(prev =>
+      prev.map((t, i) => {
+        const p = NFL_PALETTE[i % NFL_PALETTE.length];
+        return { ...t, primary: p.primary, secondary: p.secondary };
+      })
+    );
+  }, []);
+  const remixPalette = useCallback(() => {
+    setTeams(prev =>
+      prev.map(t => {
+        const p = NFL_PALETTE[Math.floor(Math.random() * NFL_PALETTE.length)];
+        return { ...t, primary: p.primary, secondary: p.secondary };
+      })
+    );
+  }, []);
 
-  const applyLeagueStyleToAll = useCallback(()=>{
+  const applyLeagueStyleToAll = useCallback(() => {
     setTeams(prev => prev.map(t => ({ ...t, style: leagueStyle })));
-  },[leagueStyle]);
+  }, [leagueStyle]);
 
-  const handleLoadLeague = useCallback(async (e: FormEvent)=>{
-    e.preventDefault(); if(!leagueId.trim()) return;
-    setLoading(true);
-    try{
-      const res = await fetch('/api/league',{
-        method:'POST',headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({provider, leagueId:leagueId.trim(), swid: espnSWID || undefined, s2: espnS2 || undefined})
-      });
-      if(!res.ok) throw new Error(`Failed: ${res.status}`);
-      const data = await res.json();
-      const mapped: Team[] = (data.teams || []).map((t:any, idx:number)=>{
-        const name = t.name || `Team ${idx+1}`;
-        const base = NFL_PALETTE[idx % NFL_PALETTE.length];
-        return {
-          id: t.id?.toString() ?? `${idx+1}`,
-          name,
-          owner: t.owner || '',
-          mascot: t.mascot || name, // SUBJECT defaults to FULL TEAM NAME
-          primary: t.primary || base.primary,
-          secondary: t.secondary || base.secondary,
-          seed: t.seed || Math.floor(Math.random()*10_000)+1,
-          style: leagueStyle,
-          logoUrl: t.logoUrl || ''
-        };
-      });
-      setTeams(mapped);
-      const params = new URLSearchParams({ provider, leagueId: leagueId.trim() });
-      if (typeof window !== 'undefined') window.history.replaceState(null, '', `?${params.toString()}`);
-    }catch(err){ console.error(err); alert('Could not load league. Double-check provider/ID (ESPN may require SWID/S2).'); }
-    finally{ setLoading(false); }
-  },[provider,leagueId,espnSWID,espnS2,leagueStyle]);
+  const handleLoadLeague = useCallback(
+    async (e: FormEvent) => {
+      e.preventDefault();
+      if (!leagueId.trim()) return;
+      setLoading(true);
+      try {
+        const res = await fetch('/api/league', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            provider,
+            leagueId: leagueId.trim(),
+            swid: espnSWID || undefined,
+            s2: espnS2 || undefined,
+          }),
+        });
+        if (!res.ok) throw new Error(`Failed: ${res.status}`);
+        const data = await res.json();
+        const mapped: Team[] = (data.teams || []).map((t: any, idx: number) => {
+          const name = t.name || `Team ${idx + 1}`;
+          const base = NFL_PALETTE[idx % NFL_PALETTE.length];
+          return {
+            id: t.id?.toString() ?? `${idx + 1}`,
+            name,
+            owner: t.owner || '',
+            mascot: t.mascot || name, // DEFAULT MASCOT = TEAM NAME
+            primary: t.primary || base.primary,
+            secondary: t.secondary || base.secondary,
+            seed: t.seed || Math.floor(Math.random() * 10_000) + 1,
+            style: leagueStyle,
+            logoUrl: t.logoUrl || '',
+          };
+        });
+        setTeams(mapped);
+        const params = new URLSearchParams({ provider, leagueId: leagueId.trim() });
+        if (typeof window !== 'undefined') window.history.replaceState(null, '', `?${params.toString()}`);
+      } catch (err) {
+        console.error(err);
+        alert('Could not load league. Double-check provider/ID (ESPN may require SWID/S2).');
+      } finally {
+        setLoading(false);
+      }
+    },
+    [provider, leagueId, espnSWID, espnS2, leagueStyle]
+  );
 
-  const updateTeam = useCallback((id:string,patch:Partial<Team>)=>{
-    setTeams(prev=>prev.map(t=>t.id===id?{...t,...patch}:t));
-  },[]);
+  const updateTeam = useCallback((id: string, patch: Partial<Team>) => {
+    setTeams(prev => prev.map(t => (t.id === id ? { ...t, ...patch } : t)));
+  }, []);
 
-  const generateLogo = useCallback(async (team:Team)=>{
-    updateTeam(team.id,{generating:true});
-    try{
-      const res = await fetch('/api/generate-logo',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({team})});
-      if(!res.ok) throw new Error(`Gen failed: ${res.status}`);
-      const data = await res.json();
-      updateTeam(team.id,{logoUrl:data.url});
-    }catch(e){ console.error(e); alert(`Logo generation failed for ${team.name}. Try again.`); }
-    finally{ updateTeam(team.id,{generating:false}); }
-  },[updateTeam]);
+  const generateLogo = useCallback(
+    async (team: Team) => {
+      updateTeam(team.id, { generating: true });
+      try {
+        const res = await fetch('/api/generate-logo', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ team }),
+        });
+        if (!res.ok) throw new Error(`Gen failed: ${res.status}`);
+        const data = await res.json();
+        updateTeam(team.id, { logoUrl: data.url });
+      } catch (e) {
+        console.error(e);
+        alert(`Logo generation failed for ${team.name}. Try again.`);
+      } finally {
+        updateTeam(team.id, { generating: false });
+      }
+    },
+    [updateTeam]
+  );
 
   // Sequential Generate All with retry and small delay
-  const generateAll = useCallback(async ()=>{
+  const generateAll = useCallback(async () => {
     if (!teams.length || bulkRunning) return;
     setBulkRunning(true);
     setBulkProgress({ done: 0, total: teams.length });
 
     for (let i = 0; i < teams.length; i++) {
       const t = teams[i];
-      let attempt = 0, success = false;
+      let attempt = 0;
+      let success = false;
       while (attempt < 3 && !success) {
         try {
           await generateLogo(t);
@@ -137,7 +167,9 @@ export default function HomePage(){
     setBulkRunning(false);
   }, [teams, generateLogo, bulkRunning]);
 
-  const clearAll = useCallback(()=>{ setTeams(prev=>prev.map(t=>({...t,logoUrl:''}))); },[]);
+  const clearAll = useCallback(() => {
+    setTeams(prev => prev.map(t => ({ ...t, logoUrl: '' })));
+  }, []);
 
   /** ---------- EMPTY (marketing) STATE ---------- **/
   if (!teams.length) {
@@ -145,15 +177,21 @@ export default function HomePage(){
       <>
         <header className="border-b border-[var(--border)] bg-[var(--panel)]/70 backdrop-blur">
           <div className="mx-auto max-w-6xl px-4 py-5 flex items-center justify-between gap-3">
-            <div className="rounded-xl bg-[var(--accent2)]/15 px-3 py-2 text-sm font-extrabold text-[var(--accent2)]">Fantasy Logo Studio</div>
+            <div className="rounded-xl bg-[var(--accent2)]/15 px-3 py-2 text-sm font-extrabold text-[var(--accent2)]">
+              Fantasy Logo Studio
+            </div>
             <div className="text-xs text-[var(--muted)]">Free • No API keys • Download-ready</div>
           </div>
         </header>
 
         <main className="mx-auto max-w-6xl px-4">
           <section className="py-10 md:py-14 text-center">
-            <h1 className="text-3xl md:text-4xl font-extrabold">Instant, professional NFL-style logos for your fantasy league</h1>
-            <p className="mt-3 text-[var(--muted)] max-w-2xl mx-auto">Pick a style for your league, load your teams, and generate bold text-free emblems with your colors.</p>
+            <h1 className="text-3xl md:text-4xl font-extrabold">
+              Instant, professional NFL-style logos for your fantasy league
+            </h1>
+            <p className="mt-3 text-[var(--muted)] max-w-2xl mx-auto">
+              Pick a style for your league, load your teams, and generate bold text-free emblems with your colors.
+            </p>
 
             {/* League-wide Style knob */}
             <div className="mt-6 panel inline-block text-left">
@@ -167,19 +205,41 @@ export default function HomePage(){
             </div>
 
             <form onSubmit={handleLoadLeague} className="mt-6 flex flex-wrap items-center justify-center gap-2">
-              <select value={provider} onChange={(e)=>setProvider(e.target.value as Provider)} className="input text-sm w-[130px]" aria-label="Provider">
+              <select
+                value={provider}
+                onChange={e => setProvider(e.target.value as Provider)}
+                className="input text-sm w-[130px]"
+                aria-label="Provider"
+              >
                 <option value="sleeper">Sleeper</option>
                 <option value="mfl">MFL</option>
                 <option value="espn">ESPN</option>
               </select>
-              <input className="input text-sm w-[240px]" placeholder="League ID" value={leagueId} onChange={(e)=>setLeagueId(e.target.value)} />
-              {provider==='espn' && (
+              <input
+                className="input text-sm w-[240px]"
+                placeholder="League ID"
+                value={leagueId}
+                onChange={e => setLeagueId(e.target.value)}
+              />
+              {provider === 'espn' && (
                 <>
-                  <input className="input text-sm w-[220px]" placeholder="ESPN SWID" value={espnSWID} onChange={(e)=>setEspnSWID(e.target.value)} />
-                  <input className="input text-sm w-[180px]" placeholder="ESPN S2" value={espnS2} onChange={(e)=>setEspnS2(e.target.value)} />
+                  <input
+                    className="input text-sm w-[220px]"
+                    placeholder="ESPN SWID"
+                    value={espnSWID}
+                    onChange={e => setEspnSWID(e.target.value)}
+                  />
+                  <input
+                    className="input text-sm w-[180px]"
+                    placeholder="ESPN S2"
+                    value={espnS2}
+                    onChange={e => setEspnS2(e.target.value)}
+                  />
                 </>
               )}
-              <button disabled={loading} className="btn btn-primary">{loading ? 'Loading…' : 'Load League'}</button>
+              <button disabled={loading} className="btn btn-primary">
+                {loading ? 'Loading…' : 'Load League'}
+              </button>
             </form>
           </section>
         </main>
@@ -192,40 +252,50 @@ export default function HomePage(){
     <>
       <header className="border-b border-[var(--border)] bg-[var(--panel)]/70 backdrop-blur">
         <div className="mx-auto max-w-6xl px-4 py-4 flex items-center justify-between gap-3">
-          <div className="rounded-xl bg-[var(--accent2)]/15 px-3 py-2 text-sm font-extrabold text-[var(--accent2)]">Fantasy Logo Studio</div>
+          <div className="rounded-xl bg-[var(--accent2)]/15 px-3 py-2 text-sm font-extrabold text-[var(--accent2)]">
+            Fantasy Logo Studio
+          </div>
           <div className="flex items-center gap-4">
             <div className="hidden md:flex items-center gap-3">
               <span className="text-xs text-[var(--muted)]">Style</span>
               <RotaryKnob value={leagueStyle} onChange={setLeagueStyle} size={64} ariaLabel="League style flavor" />
               <span className="text-xs font-semibold">{STYLE_LABELS[leagueStyle]}</span>
-              <button className="btn text-xs" onClick={applyLeagueStyleToAll}>Apply to all teams</button>
+              <button className="btn text-xs" onClick={applyLeagueStyleToAll}>
+                Apply to all teams
+              </button>
             </div>
 
-            <button onClick={applyNFLPalette} className="btn">Apply NFL Palette</button>
-            <button onClick={remixPalette} className="btn">Remix</button>
+            <button onClick={applyNFLPalette} className="btn">
+              Apply NFL Palette
+            </button>
+            <button onClick={remixPalette} className="btn">
+              Remix
+            </button>
             <button onClick={generateAll} className="btn btn-primary" disabled={bulkRunning}>
               {bulkRunning ? `Generating… ${bulkProgress.done}/${bulkProgress.total}` : 'Generate All'}
             </button>
-            <button onClick={clearAll} className="btn">Clear</button>
+            <button onClick={clearAll} className="btn">
+              Clear
+            </button>
           </div>
         </div>
       </header>
 
       <main className="mx-auto max-w-6xl px-4 py-6">
         <div className="grid gap-5 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4">
-          {teams.map(team=>(
+          {teams.map(team => (
             <TeamCard
               key={team.id}
               team={team}
-              onUpdate={(patch)=>updateTeam(team.id, patch)}
-              onGenerate={()=>generateLogo(team)}
-              onOpenImage={()=> team.logoUrl && setImageModalUrl(team.logoUrl)}
+              onUpdate={patch => updateTeam(team.id, patch)}
+              onGenerate={() => generateLogo(team)}
+              onOpenImage={() => team.logoUrl && setImageModalUrl(team.logoUrl)}
             />
           ))}
         </div>
       </main>
 
-      <Modal isOpen={!!imageModalUrl} onClose={()=>setImageModalUrl(null)} title="Logo Preview">
+      <Modal isOpen={!!imageModalUrl} onClose={() => setImageModalUrl(null)} title="Logo Preview">
         {imageModalUrl && (
           // eslint-disable-next-line @next/next/no-img-element
           <img src={imageModalUrl} alt="Generated logo full" className="rounded-xl shadow-lg max-h-[75vh] object-contain mx-auto" />
