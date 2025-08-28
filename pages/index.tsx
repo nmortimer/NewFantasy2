@@ -25,7 +25,7 @@ const NFL_PALETTE: Array<{ primary: string; secondary: string; name: string }> =
   { name: 'Saints',        primary: '#101820', secondary: '#D3BC8D' },
   { name: 'Patriots',      primary: '#002244', secondary: '#C60C30' },
   { name: 'Buccaneers',    primary: '#D50A0A', secondary: '#34302B' },
-  { name: 'Chargers',      primary: '#0073CF', secondary: '#FFC20E' },
+  { name: 'Chargers',      primary: '#0073CF', secondary: '#FFC20E' }
 ];
 
 const STYLE_LABELS = ['Modern', 'Geometric', 'Symmetric', 'Dynamic', 'Retro', 'Rounded'] as const;
@@ -45,7 +45,6 @@ export default function HomePage() {
   const [bulkRunning, setBulkRunning] = useState(false);
   const [bulkProgress, setBulkProgress] = useState({ done: 0, total: 0 });
 
-  // Apply league style to new teams loaded the first time
   useEffect(() => {
     setTeams(prev => prev.map(t => ({ ...t, style: typeof t.style === 'number' ? t.style : leagueStyle })));
   }, [leagueStyle]);
@@ -85,8 +84,8 @@ export default function HomePage() {
             provider,
             leagueId: leagueId.trim(),
             swid: espnSWID || undefined,
-            s2: espnS2 || undefined,
-          }),
+            s2: espnS2 || undefined
+          })
         });
         if (!res.ok) throw new Error(`Failed: ${res.status}`);
         const data = await res.json();
@@ -98,20 +97,21 @@ export default function HomePage() {
             id: t.id?.toString() ?? `${idx + 1}`,
             name,
             owner: t.owner || '',
-            mascot: name, // default subject = full team name
+            mascot: name,
             primary: t.primary || base.primary,
             secondary: t.secondary || base.secondary,
             seed: Math.floor(Math.random() * 10000) + 1,
             style: leagueStyle,
             logoUrl: '',
-            svgUrl: '',
             rawUrl: '',
+            generating: false
           };
         });
 
         setTeams(mapped);
         const params = new URLSearchParams({ provider, leagueId: leagueId.trim() });
-        if (typeof window !== 'undefined') window.history.replaceState(null, '', `?${params.toString()}`);
+        if (typeof window !== 'undefined')
+          window.history.replaceState(null, '', `?${params.toString()}`);
       } catch (err) {
         console.error(err);
         alert('Could not load league. Double-check provider/ID (ESPN may require SWID/S2).');
@@ -133,18 +133,17 @@ export default function HomePage() {
         const res = await fetch('/api/generate-logo', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ team }),
+          body: JSON.stringify({ team })
         });
         if (!res.ok) throw new Error(`Gen failed: ${res.status}`);
         const data = await res.json();
         const remoteUrl: string = data.url;
 
-        // Client-side post-process (quantize -> crop -> vectorize)
         const { postProcessLogo } = await import('../lib/postprocess');
-        const { pngUrl, svgUrl } = await postProcessLogo(remoteUrl, team.primary, team.secondary);
+        const pngUrl = await postProcessLogo(remoteUrl, team.primary, team.secondary);
 
         setTeams(prev =>
-          prev.map(t => (t.id === team.id ? { ...t, logoUrl: pngUrl, svgUrl, rawUrl: remoteUrl } : t))
+          prev.map(t => (t.id === team.id ? { ...t, logoUrl: pngUrl, rawUrl: remoteUrl } : t))
         );
       } catch (e) {
         console.error(e);
@@ -182,7 +181,7 @@ export default function HomePage() {
   }, [teams, generateLogo, bulkRunning]);
 
   const clearAll = useCallback(() => {
-    setTeams(prev => prev.map(t => ({ ...t, logoUrl: '', svgUrl: '', rawUrl: '' })));
+    setTeams(prev => prev.map(t => ({ ...t, logoUrl: '', rawUrl: '' })));
   }, []);
 
   if (!teams.length) {
@@ -203,11 +202,11 @@ export default function HomePage() {
               Instant, professional NFL-style logos for your fantasy league
             </h1>
             <p className="mt-3 text-[var(--muted)] max-w-2xl mx-auto">
-              Pick a league style, load teams, and generate bold text-free emblems. PNG + SVG downloads included.
+              Pick a league style, load teams, and generate bold text-free emblems. PNG downloads included.
             </p>
 
             <div className="mt-6 panel inline-block text-left">
-              <div className="flex items-center gap-6">
+              <div className="flex items-center gap-6 p-4">
                 <div>
                   <div className="text-xs text-[var(--muted)]">League Style</div>
                   <div className="text-sm font-semibold">{STYLE_LABELS[leagueStyle]}</div>
