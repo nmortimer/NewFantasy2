@@ -106,15 +106,21 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     // Strong palette enforcement and professional constraints
     const paletteList = `${primaryName} (${primaryRaw}), ${secondaryName} (${secondaryRaw}), white, black`;
-    const paletteStrict = `color palette strictly limited to: ${paletteList}; dominant color: ${primaryName} (${primaryRaw}); accent: ${secondaryName} (${secondaryRaw}); absolutely no other colors, no gradients.`;
+    const paletteStrict = `STRICT palette: ${paletteList}. dominant color: ${primaryName} (${primaryRaw}); accent: ${secondaryName} (${secondaryRaw}). NO other colors, NO gradients.`;
 
-    const negatives = 'no text, no letters, no typography, no wordmark, no numbers, no jersey, no banners, no ribbons, no slogans, no watermark, no signature, no background scene';
+    // Aggressive negative terms to kill text/badges/shields/rings
+    const negatives = [
+      'no text', 'no logo text', 'no letters', 'no typography', 'no lettering', 'no wordmark', 'no team name',
+      'no numbers', 'no numerals', 'no initials', 'no monogram',
+      'no shield', 'no crest', 'no badge', 'no circle badge', 'no ring', 'no emblem text',
+      'no banner', 'no ribbon', 'no patch', 'no sticker', 'no stamp', 'no coin', 'no medallion',
+      'no watermark', 'no signature', 'no background scene', 'no city skyline', 'no stadium',
+    ].join(', ');
 
     const prompt =
-      `professional sports team mascot logo — ${style}; ` +
-      `flat vector mark, solid fills, ${paletteStrict} ` +
-      `head-only ${mascot} emblem, centered, clean silhouette, crisp edges, high contrast, thick black outline, plain white background, export-quality; ` +
-      `${negatives}`;
+      `professional sports team logo — ${style}; ` +
+      `flat vector mascot mark of a ${mascot} HEAD ONLY, centered, clean silhouette, crisp edges, heavy outline, plain white background; ` +
+      `${paletteStrict}; ${negatives}`;
 
     const encoded = encodeURIComponent(prompt);
     const url = `https://image.pollinations.ai/prompt/${encoded}?seed=${variationSeed}&width=1024&height=1024`;
