@@ -1,4 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import Modal from './Modal';
+import ColorPicker from './ColorPicker';
 
 export type Team = {
   id: string;
@@ -7,7 +9,7 @@ export type Team = {
   mascot: string;
   primary: string;
   secondary: string;
-  seed: number;
+  seed: number;           // kept in data model, but shown to users as "Variation"
   logoUrl?: string;
   generating?: boolean;
 };
@@ -18,36 +20,6 @@ type Props = {
   onGenerate: () => Promise<void> | void;
   onOpenImage: () => void;
 };
-
-/** Small inline color field (compact) */
-function ColorField({
-  label,
-  value,
-  onChange,
-}: {
-  label: string;
-  value: string;
-  onChange: (v: string) => void;
-}) {
-  return (
-    <label className="text-xs flex items-center gap-2">
-      <span className="w-16 text-[var(--muted)]">{label}</span>
-      <input
-        type="color"
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        className="h-8 w-10 rounded-md border border-[var(--border)] bg-[var(--card)]"
-      />
-      <input
-        type="text"
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        className="flex-1 rounded-md bg-[var(--card)] border border-[var(--border)] px-2 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-[var(--accent)]"
-        placeholder="#000000"
-      />
-    </label>
-  );
-}
 
 /** Guess a mascot from the full team name (used if user doesn't specify one) */
 function deriveMascotFromName(name: string): string {
@@ -73,9 +45,9 @@ function deriveMascotFromName(name: string): string {
 }
 
 export default function TeamCard({ team, onUpdate, onGenerate, onOpenImage }: Props) {
-  const [copyState, setCopyState] = useState<'idle' | 'copied'>('idle');
+  const [copyState, setCopyState] = useState<'idle'|'copied'>('idle');
   const [canShare, setCanShare] = useState(false);
-  const [open, setOpen] = useState(false); // collapsible inspector
+  const [editOpen, setEditOpen] = useState(false);
 
   useEffect(() => {
     if (typeof navigator !== 'undefined' && 'share' in navigator) setCanShare(true);
@@ -83,7 +55,9 @@ export default function TeamCard({ team, onUpdate, onGenerate, onOpenImage }: Pr
 
   const suggestedMascot = useMemo(() => deriveMascotFromName(team.name), [team.name]);
 
-  const newSeed = useCallback(() => onUpdate({ seed: Math.floor(Math.random() * 10_000) + 1 }), [onUpdate]);
+  const shuffleVariation = useCallback(() => {
+    onUpdate({ seed: Math.floor(Math.random() * 10_000) + 1 });
+  }, [onUpdate]);
 
   const download = useCallback(async () => {
     if (!team.logoUrl) return;
@@ -112,127 +86,116 @@ export default function TeamCard({ team, onUpdate, onGenerate, onOpenImage }: Pr
   }, [canShare, copyUrl, team.logoUrl, team.name]);
 
   return (
-    <div className="card overflow-hidden p-4 flex flex-col">
-      {/* Header */}
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <h3 className="text-sm font-semibold leading-tight break-words">{team.name}</h3>
-          <p className="text-[10px] text-[var(--muted)]">{team.owner || '—'}</p>
-        </div>
-        <span className="badge">#{team.id}</span>
-      </div>
-
-      {/* Image */}
-      <div className="mt-3 aspect-square border border-[var(--border)] bg-[var(--card-2)] rounded-xl overflow-hidden">
-        {team.logoUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={team.logoUrl} alt={`${team.name} logo`} className="h-full w-full object-cover" />
-        ) : (
-          <div className="h-full w-full grid place-items-center text-xs text-[var(--muted)] px-3">
-            No logo yet — generate to preview
+    <>
+      <div className="card p-4 flex flex-col">
+        {/* Header */}
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <h3 className="text-sm font-semibold leading-tight break-words">{team.name}</h3>
+            <p className="text-[10px] text-[var(--muted)]">{team.owner || '—'}</p>
           </div>
-        )}
-      </div>
-
-      {/* Primary actions */}
-      <div className="mt-3 grid grid-cols-2 gap-2">
-        <button className="btn btn-primary h-10 whitespace-nowrap" onClick={onGenerate} disabled={!!team.generating}>
-          {team.generating ? 'Generating…' : 'Generate Logo'}
-        </button>
-        <button
-          className="btn h-10 whitespace-nowrap"
-          aria-expanded={open}
-          onClick={() => setOpen((s) => !s)}
-        >
-          {open ? 'Close' : 'Edit Logo'}
-        </button>
-      </div>
-
-      {/* Secondary actions */}
-      <div className="mt-2 grid grid-cols-3 gap-2">
-        <button className="btn h-9" onClick={onOpenImage} disabled={!team.logoUrl}>Open</button>
-        <button className="btn h-9" onClick={download} disabled={!team.logoUrl}>Download</button>
-        <button className="btn h-9" onClick={share} disabled={!team.logoUrl}>
-          {canShare ? 'Share' : (copyState === 'copied' ? 'Copied!' : 'Copy URL')}
-        </button>
-      </div>
-
-      {/* Color strip + URL */}
-      <div className="mt-2 flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <div className="h-5 w-5 rounded" style={{ background: team.primary }} />
-          <div className="h-5 w-5 rounded border border-[var(--border)]" style={{ background: team.secondary }} />
+          <span className="badge">#{team.id}</span>
         </div>
-        <span className="text-[10px] text-[var(--muted)] truncate max-w-[60%]">
-          {team.logoUrl ? team.logoUrl : 'No image yet'}
-        </span>
+
+        {/* Image */}
+        <div className="mt-3 aspect-square border border-[var(--border)] bg-[var(--card-2)] rounded-xl overflow-hidden">
+          {team.logoUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={team.logoUrl} alt={`${team.name} logo`} className="h-full w-full object-cover" />
+          ) : (
+            <div className="h-full w-full grid place-items-center text-xs text-[var(--muted)] px-3">
+              No logo yet — generate to preview
+            </div>
+          )}
+        </div>
+
+        {/* Primary actions */}
+        <div className="mt-3 grid grid-cols-2 gap-2">
+          <button className="btn btn-primary h-10" onClick={onGenerate} disabled={!!team.generating}>
+            {team.generating ? 'Generating…' : 'Generate Logo'}
+          </button>
+          <button className="btn h-10" onClick={() => setEditOpen(true)}>Edit</button>
+        </div>
+
+        {/* Secondary actions */}
+        <div className="mt-2 grid grid-cols-3 gap-2">
+          <button className="btn h-9" onClick={onOpenImage} disabled={!team.logoUrl}>Open</button>
+          <button className="btn h-9" onClick={download} disabled={!team.logoUrl}>Download</button>
+          <button className="btn h-9" onClick={share} disabled={!team.logoUrl}>
+            {canShare ? 'Share' : (copyState === 'copied' ? 'Copied!' : 'Copy URL')}
+          </button>
+        </div>
+
+        {/* Color strip + URL */}
+        <div className="mt-2 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <div className="h-5 w-5 rounded" style={{ background: team.primary }} />
+            <div className="h-5 w-5 rounded border border-[var(--border)]" style={{ background: team.secondary }} />
+          </div>
+          <span className="text-[10px] text-[var(--muted)] truncate max-w-[60%]">
+            {team.logoUrl ? team.logoUrl : 'No image yet'}
+          </span>
+        </div>
       </div>
 
-      {/* Collapsible inspector */}
-      <div
-        className={`transition-[max-height] duration-300 ease-in-out overflow-hidden ${open ? 'max-h-[420px] mt-3' : 'max-h-0'}`}
-      >
-        <div className="border-t border-dashed border-[var(--border)] pt-3">
-          <div className="grid gap-3">
-            {/* Team name drives mascot */}
+      {/* EDIT MODAL (no card growth, no overflow) */}
+      <Modal isOpen={editOpen} onClose={() => setEditOpen(false)} title="Edit Logo Settings">
+        <div className="grid gap-3">
+          <label className="text-xs flex items-center gap-2">
+            <span className="w-28 text-[var(--muted)]">Team Name</span>
+            <input
+              value={team.name}
+              onChange={(e) => onUpdate({ name: e.target.value })}
+              className="input flex-1 text-xs"
+              placeholder="e.g., Swedish Arctic Foxes"
+            />
+          </label>
+
+          <div className="grid grid-cols-1 sm:grid-cols-[1fr_auto] gap-2">
             <label className="text-xs flex items-center gap-2">
-              <span className="w-24 text-[var(--muted)]">Team Name</span>
+              <span className="w-28 text-[var(--muted)]">Mascot</span>
               <input
-                value={team.name}
-                onChange={(e) => onUpdate({ name: e.target.value })}
+                value={team.mascot}
+                onChange={(e) => onUpdate({ mascot: e.target.value })}
                 className="input flex-1 text-xs"
-                placeholder="e.g., Swedish Arctic Foxes"
+                placeholder="e.g., fox"
               />
             </label>
+            <button
+              type="button"
+              className="btn text-xs"
+              onClick={() => onUpdate({ mascot: suggestedMascot })}
+              title={`Use mascot from team name`}
+            >
+              Use “{suggestedMascot}”
+            </button>
+          </div>
 
-            {/* Mascot with helper */}
-            <div className="grid grid-cols-1 sm:grid-cols-[1fr_auto] gap-2">
-              <label className="text-xs flex items-center gap-2">
-                <span className="w-24 text-[var(--muted)]">Mascot</span>
-                <input
-                  value={team.mascot}
-                  onChange={(e) => onUpdate({ mascot: e.target.value })}
-                  className="input flex-1 text-xs"
-                  placeholder="e.g., fox"
-                />
-              </label>
-              <button
-                type="button"
-                className="btn h-9 text-xs whitespace-nowrap"
-                onClick={() => onUpdate({ mascot: suggestedMascot })}
-                title={`Use mascot from team name`}
-              >
-                From Name → {suggestedMascot}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <ColorPicker label="Primary" value={team.primary} onChange={(v) => onUpdate({ primary: v })} />
+            <ColorPicker label="Secondary" value={team.secondary} onChange={(v) => onUpdate({ secondary: v })} />
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-[auto_auto_1fr] gap-2 items-center">
+            <label className="text-xs flex items-center gap-2">
+              <span className="w-28 text-[var(--muted)]">Variation</span>
+              <input
+                type="number"
+                value={team.seed}
+                onChange={(e) => onUpdate({ seed: parseInt(e.target.value || '0', 10) || 1 })}
+                className="input w-28 text-xs"
+                min={1}
+              />
+            </label>
+            <button className="btn text-xs" onClick={shuffleVariation}>Shuffle</button>
+            <div className="sm:text-right">
+              <button className="btn btn-primary text-xs" onClick={onGenerate} disabled={!!team.generating}>
+                {team.generating ? 'Generating…' : 'Generate from these settings'}
               </button>
-            </div>
-
-            {/* Colors (two-up to keep compact) */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <ColorField label="Primary" value={team.primary} onChange={(v) => onUpdate({ primary: v })} />
-              <ColorField label="Secondary" value={team.secondary} onChange={(v) => onUpdate({ secondary: v })} />
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-[auto_auto_1fr] gap-2 items-center">
-              <label className="text-xs flex items-center gap-2">
-                <span className="w-24 text-[var(--muted)]">Seed</span>
-                <input
-                  type="number"
-                  value={team.seed}
-                  onChange={(e) => onUpdate({ seed: parseInt(e.target.value || '0', 10) || 1 })}
-                  className="input w-28 text-xs"
-                  min={1}
-                />
-              </label>
-              <button className="btn h-9 text-xs" onClick={newSeed}>New Seed</button>
-              <div className="sm:text-right">
-                <button className="btn btn-primary h-9 text-xs whitespace-nowrap" onClick={onGenerate} disabled={!!team.generating}>
-                  {team.generating ? 'Generating…' : 'Generate from these settings'}
-                </button>
-              </div>
             </div>
           </div>
         </div>
-      </div>
-    </div>
+      </Modal>
+    </>
   );
 }
